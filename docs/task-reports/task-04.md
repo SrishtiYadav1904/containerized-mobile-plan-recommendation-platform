@@ -77,7 +77,7 @@
 
 - **Git branch / commit / tag / PR (if applicable):**
   - Branches: `main` (default release), `develop` (integration)
-  - Initial commit hash: (Recorded after initial commit)
+  - Initial commit: `234e156` (`feat(init): initialize repository structure, Maven Spring Boot skeleton, and DevOps config (Task 4)`)
 
 - **Manual steps still required:**
   - Because GitHub account `SrishtiYadav1904` credentials are not present in the current terminal environment (authenticated CLI account is a different user), the remote repository needs to be created on GitHub under `SrishtiYadav1904` and pushed manually using these steps:
