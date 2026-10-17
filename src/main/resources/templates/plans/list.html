@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Plan Catalogue — Plan Recommendation Platform</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" href="/css/styles.css">
+</head>
+<body>
+    <header class="brand-header">
+        <a th:href="@{/}" href="/" class="brand-title">
+            <span>📱</span> Mobile Plan Recommendation Platform
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/plans}" class="nav-link active">Catalogue</a>
+            <span th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                <a th:href="@{/plans/new}" class="btn-primary-mpr btn-sm">+ Create Plan</a>
+            </span>
+            <span class="badge-role" th:text="${currentRole}">CUSTOMER</span>
+            <span th:if="${username != 'Guest' and username != 'anonymousUser'}">
+                <form th:action="@{/logout}" method="post" style="display:inline;">
+                    <button type="submit" class="btn-secondary-mpr btn-sm">Log out</button>
+                </form>
+            </span>
+            <span th:unless="${username != 'Guest' and username != 'anonymousUser'}">
+                <a th:href="@{/login}" class="btn-secondary-mpr btn-sm">Sign in</a>
+            </span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Success Alert -->
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">
+            Plan created successfully!
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Available Mobile Tariffs</h1>
+                <p class="page-subtitle" th:if="${currentRole == 'CUSTOMER'}">
+                    Showing verified and <strong>published</strong> mobile tariffs curated for customers.
+                </p>
+                <p class="page-subtitle" th:unless="${currentRole == 'CUSTOMER'}">
+                    Analyst view: Showing all catalogue plans across all workflow statuses (Draft, In Review, Published, Archived).
+                </p>
+            </div>
+            <div th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                <a th:href="@{/plans/new}" class="btn-primary-mpr">+ New Plan Draft</a>
+            </div>
+        </div>
+
+        <!-- Plan Grid -->
+        <div th:if="${#lists.isEmpty(plans)}" class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">No Plans Found</div>
+            <p class="empty-state-text">There are currently no active plans available in this view.</p>
+            <div th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                <a th:href="@{/plans/new}" class="btn-primary-mpr">Create the First Plan</a>
+            </div>
+        </div>
+
+        <div th:unless="${#lists.isEmpty(plans)}" class="plan-grid">
+            <div th:each="plan : ${plans}" class="plan-card">
+                <div class="plan-card-header">
+                    <span class="plan-operator" th:text="${plan.operator}">Jio</span>
+                    <span th:class="'badge-status badge-status-' + ${plan.status}"
+                          th:text="${plan.status.displayName}">
+                        Published
+                    </span>
+                </div>
+
+                <h3 class="plan-name" th:text="${plan.name}">Hero Unlimited 28D</h3>
+
+                <div class="plan-price-tag">
+                    <span class="plan-price" th:text="'₹' + ${#numbers.formatDecimal(plan.price, 1, 2)}">₹299.00</span>
+                    <span class="plan-validity" th:text="'/ ' + ${plan.validityDays} + ' Days'">/ 28 Days</span>
+                </div>
+
+                <div class="plan-spec-list">
+                    <div class="spec-item">
+                        <span class="spec-label">Daily Data</span>
+                        <span class="spec-value" th:text="${plan.dataGbPerDay} + ' GB/day'">1.5 GB/day</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Voice Calling</span>
+                        <span class="spec-value" th:text="${plan.voiceDescription}">Unlimited</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">SMS Quota</span>
+                        <span class="spec-value" th:text="${plan.smsCount} + ' / day'">100 / day</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Created By</span>
+                        <span class="spec-value" th:text="${plan.createdBy != null ? plan.createdBy : 'System'}">analyst</span>
+                    </div>
+                </div>
+
+                <div class="plan-benefits" th:text="${plan.benefits}">
+                    Includes Disney+ Hotstar Mobile subscription and free night data.
+                </div>
+
+                <div class="plan-card-footer">
+                    <a th:href="@{/plans/{id}(id=${plan.id})}" class="btn-secondary-mpr btn-sm">View Details →</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

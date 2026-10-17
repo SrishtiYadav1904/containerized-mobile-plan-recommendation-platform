@@ -8,35 +8,39 @@
 </head>
 <body>
     <header class="brand-header">
-        <div class="brand-title">
+        <a th:href="@{/}" href="/" class="brand-title">
             <span>📱</span> Mobile Plan Recommendation Platform
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/plans}" class="nav-link">Browse Plans</a>
+            <a th:href="@{/plans/new}" class="btn-primary-mpr btn-sm">+ Create Plan</a>
+            <a th:href="@{/actuator/health}" class="btn-secondary-mpr btn-sm">Health</a>
         </div>
-        <span class="badge-lilac">DevOps Platform v1.0-SNAPSHOT</span>
     </header>
 
-    <main class="hero-section">
-        <h1 class="hero-title">Compare & Discover the Best Mobile Plans</h1>
-        <p class="hero-subtitle">
+    <main class="hero-section" style="max-width: 900px; margin: 3rem auto; padding: 2.5rem; background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-md); text-align: center;">
+        <h1 class="hero-title" style="font-size: 2.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 1rem;">Compare & Discover the Best Mobile Plans</h1>
+        <p class="hero-subtitle" style="font-size: 1.15rem; color: var(--text-muted); max-width: 650px; margin: 0 auto 2rem auto;">
             An automated, containerized platform delivering transparent, rule-based recommendations tailored to your data, calling, and budget requirements.
         </p>
 
-        <div>
-            <a href="/actuator/health" class="btn-primary-mpr">System Health Check</a>
-            <a href="https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform" class="btn-secondary-mpr">Repository Docs</a>
+        <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+            <a th:href="@{/plans}" class="btn-primary-mpr">Browse Mobile Tariffs</a>
+            <a th:href="@{/plans/new}" class="btn-secondary-mpr">Analyst: Add Plan Draft</a>
         </div>
 
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h3>Customer Access</h3>
-                <p>Browse published tariffs, filter by budget and validity, and receive ranked plan matches.</p>
+        <div class="feature-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 2.5rem; text-align: left;">
+            <div class="feature-card" style="padding: 1.5rem; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <h3 style="font-size: 1.1rem; margin-top: 0; color: var(--accent-pink);">Customer Access</h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Browse verified published tariffs, filter by budget and validity, and receive ranked plan matches.</p>
             </div>
-            <div class="feature-card">
-                <h3>Analyst Workflow</h3>
-                <p>Maintain accurate catalogue records, manage data fields, and submit plans for review.</p>
+            <div class="feature-card" style="padding: 1.5rem; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <h3 style="font-size: 1.1rem; margin-top: 0; color: var(--accent-pink);">Analyst Workflow</h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Maintain accurate catalogue records, manage data fields, and submit plan drafts for review.</p>
             </div>
-            <div class="feature-card">
-                <h3>Admin Governance</h3>
-                <p>Review, publish, and archive plans with strict audit trails and role-based permissions.</p>
+            <div class="feature-card" style="padding: 1.5rem; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <h3 style="font-size: 1.1rem; margin-top: 0; color: var(--accent-pink);">Admin Governance</h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Review, publish, and archive plans with strict audit trails and role-based permissions.</p>
             </div>
         </div>
     </main>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${plan.name} + ' — Plan Details'">Plan Details</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" href="/css/styles.css">
+</head>
+<body>
+    <header class="brand-header">
+        <a th:href="@{/}" href="/" class="brand-title">
+            <span>📱</span> Mobile Plan Recommendation Platform
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/plans}" class="nav-link">Catalogue</a>
+            <span class="badge-role" th:text="${currentRole}">CUSTOMER</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="detail-card">
+            <div class="page-header" style="margin-bottom: 1.5rem;">
+                <div>
+                    <span class="plan-operator" th:text="${plan.operator}">Jio</span>
+                    <h1 class="page-title" th:text="${plan.name}">Hero Unlimited 28D</h1>
+                </div>
+                <div>
+                    <span th:class="'badge-status badge-status-' + ${plan.status}"
+                          th:text="${plan.status.displayName}">
+                        Published
+                    </span>
+                </div>
+            </div>
+
+            <div class="plan-price-tag">
+                <span class="plan-price" th:text="'₹' + ${#numbers.formatDecimal(plan.price, 1, 2)}">₹299.00</span>
+                <span class="plan-validity" th:text="'for ' + ${plan.validityDays} + ' Days Validity'">for 28 Days Validity</span>
+            </div>
+
+            <table class="detail-table">
+                <tr>
+                    <th>Daily High-Speed Data</th>
+                    <td th:text="${plan.dataGbPerDay} + ' GB / day'">1.5 GB / day</td>
+                </tr>
+                <tr>
+                    <th>Voice Calling Quota</th>
+                    <td th:text="${plan.voiceDescription}">Unlimited</td>
+                </tr>
+                <tr>
+                    <th>SMS Quota</th>
+                    <td th:text="${plan.smsCount} + ' SMS / day'">100 SMS / day</td>
+                </tr>
+                <tr>
+                    <th>Perks & OTT Benefits</th>
+                    <td th:text="${plan.benefits != null and !#strings.isEmpty(plan.benefits) ? plan.benefits : 'Standard network connectivity'}">
+                        Disney+ Hotstar, JioCinema
+                    </td>
+                </tr>
+                <tr th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                    <th>Workflow Status</th>
+                    <td>
+                        <span th:class="'badge-status badge-status-' + ${plan.status}" th:text="${plan.status}">DRAFT</span>
+                    </td>
+                </tr>
+                <tr th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                    <th>Audit Trail</th>
+                    <td>
+                        Created by: <strong th:text="${plan.createdBy != null ? plan.createdBy : 'System'}">analyst</strong>
+                        <span th:if="${plan.createdAt != null}" th:text="' on ' + ${#temporals.format(plan.createdAt, 'dd MMM yyyy HH:mm')}"></span>
+                    </td>
+                </tr>
+            </table>
+
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <a th:href="@{/plans}" class="btn-secondary-mpr">← Back to Catalogue</a>
+                <span th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                    <a th:href="@{/plans/new}" class="btn-primary-mpr">+ Create Another Plan</a>
+                </span>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

@@ -6,7 +6,7 @@
 | 2 | Agile planning and DevOps workflow | Completed | Refer to uploaded Tasks 1–3 document |
 | 3 | Requirements, architecture and setup | Completed | Refer to uploaded Tasks 1–3 document |
 | 4 | Git and GitHub Repository Initialization | Completed | `docs/task-reports/task-04.md` |
-| 5 | Feature Development with Branching | Not started | `docs/task-reports/task-05.md` |
+| 5 | Feature Development with Branching | Completed | `docs/task-reports/task-05.md` |
 | 6 | MVP Completion and Git Collaboration | Not started | `docs/task-reports/task-06.md` |
 | 7 | Jenkins Installation and Continuous Integration Job | Not started | `docs/task-reports/task-07.md` |
 | 8 | Pipeline as Code and Server Deployment | Not started | `docs/task-reports/task-08.md` |

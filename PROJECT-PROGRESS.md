@@ -278,24 +278,58 @@ flowchart TD
 ---
 
 ### Task 5 — Feature Development with Branching
-- **Task Objective:** Implement the first application feature on a dedicated branch (`feature/5-create-view-plans`): create and view mobile plan records for Analysts, enforce `DRAFT` status, restrict customer visibility to `PUBLISHED` plans, write unit tests, and raise a pull request targeting `develop`.
-- **What Was Implemented:** *Not started yet.*
+- **Task Objective:** Implement the first application feature on a dedicated branch (`feature/5-create-view-plans`): create and view mobile plan records for Analysts, enforce `DRAFT` status, restrict customer visibility to `PUBLISHED` plans, write unit and integration tests, and raise a pull request targeting `develop`.
+- **What Was Implemented:**
+  1. Branched `feature/5-create-view-plans` from `develop`.
+  2. Implemented `PlanStatus.java` enum (`DRAFT`, `IN_REVIEW`, `PUBLISHED`, `ARCHIVED`).
+  3. Implemented `Plan.java` JPA entity with the 8 approved attributes (Operator, Name, Price, Validity, Data GB/day, Voice minutes, SMS count, Benefits) plus audit attributes and validation annotations.
+  4. Created `PlanRepository.java` with Spring Data JPA query methods.
+  5. Created `PlanService.java` enforcing initial `DRAFT` status, input validation, role-based visibility filtering (Customers view only `PUBLISHED`, Analysts/Admins view all), and sample data initialization.
+  6. Configured role-based security in `SecurityConfig.java` for `CUSTOMER`, `ANALYST`, and `ADMINISTRATOR` roles with BCrypt encoding.
+  7. Built `PlanWebController.java` (`GET /plans`, `GET /plans/new`, `POST /plans`, `GET /plans/{id}`) and `PlanRestController.java` (`GET /api/plans`, `POST /api/plans`).
+  8. Created responsive, accessible light-theme Thymeleaf views: `plans/list.html`, `plans/create.html`, and `plans/detail.html` styled with soft pink (`#E86A92`) and lilac (`#8E7CC3`) accents.
+  9. Authored 11 comprehensive unit and integration tests (`PlanServiceTest` and `PlanControllerTest`), achieving 100% test pass rate across 12 total test cases.
 - **Why It Matters:** Demonstrates professional Git branching, entity modeling, status constraints, and service layer validation before merging into the main codebase.
 - **How It Works:** Analysts submit plan creation requests via web form. Spring controller validates inputs, persists the entity with status `DRAFT`, and redirects to the catalog list. Customers querying the catalog receive only `PUBLISHED` plans.
-- **Tools Used:** Git, Java 17, Spring Boot 3 (Web, Data JPA, Validation), Thymeleaf, JUnit 5.
-- **Important Files:** Planned: `Plan.java`, `PlanRepository.java`, `PlanService.java`, `PlanController.java`, `plan-create.html`, `plan-list.html`.
-- **Commands Executed:** Planned: `git checkout -b feature/5-create-view-plans develop`.
-- **Testing and Verification:** Planned: Unit tests verifying field validation and role-based filtering.
-- **Git Activity:** Planned: Feature branch `feature/5-create-view-plans`, commits, PR to `develop`.
-- **Evidence:** Planned: `docs/task-reports/task-05.md`.
-- **Problems Encountered:** None yet.
-- **Remaining Work:** Create branch, implement entity, service, controller, templates, tests, commit, push, and submit PR.
-- **Completion Status:** **Not started**.
+- **Tools Used:** Git, Java 17, Spring Boot 3 (Web, Data JPA, Security, Validation), Thymeleaf, JUnit 5, Mockito, MockMvc.
+- **Important Files:**
+  - `src/main/java/com/mpr/platform/model/Plan.java`
+  - `src/main/java/com/mpr/platform/model/PlanStatus.java`
+  - `src/main/java/com/mpr/platform/repository/PlanRepository.java`
+  - `src/main/java/com/mpr/platform/service/PlanService.java`
+  - `src/main/java/com/mpr/platform/controller/PlanWebController.java`
+  - `src/main/java/com/mpr/platform/controller/PlanRestController.java`
+  - `src/main/resources/templates/plans/list.html`
+  - `src/main/resources/templates/plans/create.html`
+  - `src/main/resources/templates/plans/detail.html`
+  - `src/test/java/com/mpr/platform/service/PlanServiceTest.java`
+  - `src/test/java/com/mpr/platform/controller/PlanControllerTest.java`
+  - `docs/task-reports/task-05.md`
+- **Commands Executed:**
+  ```powershell
+  git checkout -b feature/5-create-view-plans develop
+  mvn clean test          # Outcome: BUILD SUCCESS (12 tests run, 0 failures, 0 errors in 26.6s)
+  ```
+- **Testing and Verification:**
+  - `PlanServiceTest`: 5 unit tests verifying DRAFT enforcement, price validation, customer PUBLISHED filtering, and detail permission checks.
+  - `PlanControllerTest`: 6 MockMvc integration tests verifying web routing, security role gates, form creation, and REST endpoints.
+  - Total: 12 tests run, 0 failures, 0 errors.
+- **Git Activity:**
+  - Feature Branch: `feature/5-create-view-plans`
+  - Target Branch: `develop`
+- **Evidence:**
+  - Task Report: [docs/task-reports/task-05.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-05.md)
+  - Maven Surefire Reports: `target/surefire-reports/`
+- **Problems Encountered:** None. JPA entities, role filters, and Thymeleaf views compiled and passed cleanly.
+- **Remaining Work:** Commit changes to `feature/5-create-view-plans`, push to GitHub, and create Pull Request to `develop`.
+- **Completion Status:** **Completed** (Implementation and test suite verified).
 - **Viva Preparation:**
   - *Q1: Why should feature development always happen on a separate branch?*  
     *Answer:* Branching isolates unfinished or experimental code from the stable integration branch (`develop`), enabling multiple developers to work concurrently without breaking the build.
   - *Q2: How does the application enforce that Customers only see PUBLISHED plans?*  
     *Answer:* The service layer filters catalog queries: when the authenticated user has the `CUSTOMER` role, it appends a `WHERE status = 'PUBLISHED'` predicate to the query.
+  - *Q3: Why is input validation performed at both the Bean Validation level and the Service level?*  
+    *Answer:* Bean Validation (`@Valid`, `@NotBlank`, `@DecimalMin`) catches input errors at the HTTP request layer and returns user-friendly form error messages, while Service-level validation acts as a defensive guard ensuring business rules cannot be bypassed by any controller or background job.
 
 ---
 
@@ -422,17 +456,17 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `main` (clean working tree) | `git status` |
-| **Active Remote Branches** | `main` and `develop` both synchronized with GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
-| **Latest Commit SHA** | `826890a` | `git log -n 1 --oneline` |
-| **Working Application Features** | Spring Boot 3 web application initialization, basic home routing (`HomeController`), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI foundation with soft pink/lilac accents. | `src/main/` |
-| **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). | `src/main/resources/application.properties` |
-| **Test Suite Results** | 1 test run, 0 failures, 0 errors, 0 skipped (`MobilePlanRecommendationApplicationTests`). | Maven Surefire Test Report (`target/surefire-reports/`) |
+| **Active Local Branch** | `feature/5-create-view-plans` (clean working tree after commit) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, and `feature/5-create-view-plans` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Latest Commit SHA** | (Recorded upon Task 5 commit) | `git log -n 1 --oneline` |
+| **Working Application Features** | Plan entity with 8 attributes, Plan catalogue list view with status badges, Plan detail view with audit info, Analyst plan creation form (`DRAFT` enforcement), role-based visibility filtering (`CUSTOMER` sees only `PUBLISHED`, `ANALYST`/`ADMINISTRATOR` sees all), REST APIs (`/api/plans`), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
+| **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan seeding active. | `src/main/resources/application.properties` |
+| **Test Suite Results** | 12 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest`, `PlanControllerTest`, `MobilePlanRecommendationApplicationTests`). | Maven Surefire Test Report (`target/surefire-reports/`) |
 | **Jenkins Status** | Not started (Planned for Tasks 7 & 8). | N/A |
 | **Docker Status** | Not started (Planned for Tasks 11 & 12). | N/A |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
 | **Verified Working Ports** | Local development default: `8080`. Planned Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` |
-| **Known Blockers** | None. Repository initialized and published. | `TASK-TRACKER.md` |
+| **Known Blockers** | None. Feature 5 implemented and verified. | `TASK-TRACKER.md` |
 
 ---
 
