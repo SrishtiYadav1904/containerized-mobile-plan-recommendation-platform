@@ -334,15 +334,118 @@ flowchart TD
 ---
 
 ### Task 6 — MVP Completion and Git Collaboration
-- **Task Objective:** Complete remaining MVP features (user authentication, status transition workflow, recommendation scoring, summary dashboard), demonstrate Git collaboration including merge conflict resolution, and create a release tag `v1.0.0` on `main`.
-- **What Was Implemented:** *Not started yet.*
-- **Why It Matters:** Shows full feature completion and proves the developer can handle real-world Git conflict resolution and release tagging.
-- **Completion Status:** **Not started**.
+- **Task Objective:** Complete the full approved MVP (user authentication with BCrypt hashing, role-based access control for `CUSTOMER`, `ANALYST`, and `ADMINISTRATOR`, plan CRUD with search and filtering, role-governed status transition workflow, transparent multi-attribute recommendation engine, executive summary dashboard, and 24 realistic seed plans), demonstrate a controlled Git merge conflict and its clean resolution in a safe documentation file, expand automated test coverage, merge the feature branch into `develop` via Pull Request, sync `main`, and tag the release-ready baseline `v0.1.0`.
+- **What Was Implemented:**
+  1. **Domain Models & Repositories:**
+     - `User.java`: Entity representing registered users with fields `username`, `password` (BCrypt encoded), `email`, and `role` (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`).
+     - `RecommendationRequest.java`: Customer input entity storing `monthlyDataGb`, `monthlyVoiceMinutes`, `budget`, `preferredOperator`, and `benefitPreferences`.
+     - `RecommendationResult.java`: Persisted recommendation scoring results storing overall `score`, component breakdown scores (`dataScore`, `voiceScore`, `priceScore`, `perksScore`), and human-readable explanation.
+     - Spring Data JPA repositories: `UserRepository`, `RecommendationRequestRepository`, `RecommendationResultRepository`.
+  2. **Security & Authentication Service:**
+     - `UserService.java`: Handles user registration with username duplication checks, BCrypt password hashing, and implements Spring Security's `UserDetailsService` mapping domain roles to `ROLE_CUSTOMER`, `ROLE_ANALYST`, `ROLE_ADMINISTRATOR`. Pre-provisions 3 demo seed accounts (`customer`, `analyst`, `admin`).
+     - `SecurityConfig.java`: Integrated `DaoAuthenticationProvider` with `UserService`, added custom `/login` and `/register` web routes, configured role guards for analyst actions (`/plans/new`, `/plans/*/edit`), administrator actions (`/plans/*/status`, `/dashboard`, `/api/dashboard/summary`), and permitted public access to catalog and recommendation views.
+     - `AuthController.java` & `AuthRestController.java`: Web controllers and REST endpoints (`/api/auth/register`, `/api/auth/login`).
+  3. **Plan Status Workflow & CRUD:**
+     - `PlanService.java`: Enforces strict lifecycle state transitions:
+       - `DRAFT → IN_REVIEW`: Analyst or Administrator submits draft.
+       - `IN_REVIEW → PUBLISHED`: Administrator approves and publishes.
+       - `PUBLISHED → ARCHIVED`: Administrator retires the plan.
+       - Any invalid state jump (e.g., `DRAFT → PUBLISHED` or non-sequential changes) is strictly rejected with `IllegalStateException`.
+     - Implemented dynamic plan search by keyword (matching plan name or operator) and multi-attribute filters (maximum price, minimum validity).
+     - Loaded 24 realistic seed plans across 4 leading Indian operators (Jio, Airtel, Vi, BSNL) across varied validity windows (28, 56, 84, 365 days).
+  4. **Transparent Multi-Attribute Recommendation Engine:**
+     - `RecommendationService.java`: Configurable, rule-based multi-criteria scoring algorithm:
+       $$\text{Score} = (0.35 \times \text{DataScore}) + (0.25 \times \text{VoiceScore}) + (0.25 \times \text{PriceScore}) + (0.15 \times \text{PerksScore})$$
+     - Strict hard filtering: Plans priced strictly higher than the customer's budget are eliminated. Only plans in `PUBLISHED` status are evaluated.
+     - Stores and renders itemized score breakdowns and explanatory justification for each suggested plan.
+     - Created interactive web views: `recommendations/form.html` (input questionnaire) and `recommendations/results.html` (ranked results table with score pills).
+  5. **Executive Summary Dashboard:**
+     - `DashboardWebController.java` (`/dashboard`) and `PlanRestController.java` (`/api/dashboard/summary`).
+     - Real-time aggregated platform metrics: Total plan count, breakdown by status (`DRAFT`, `IN_REVIEW`, `PUBLISHED`, `ARCHIVED`), breakdown by operator (`Jio`, `Airtel`, `Vi`, `BSNL`), and average plan price.
+  6. **Controlled Git Merge Conflict & Resolution:**
+     - Isolated temporary branch `conflict-simulation` branched from `develop`.
+     - Made concurrent, conflicting edits to lines 7–17 of `docs/git-collaboration-demo.md`.
+     - Executed `git merge conflict-simulation` on `feature/6-mvp-completion`, triggering `CONFLICT (add/add): Merge conflict in docs/git-collaboration-demo.md`.
+     - Verified conflict markers (`<<<<<<< HEAD`, `=======`, `>>>>>>> conflict-simulation`), resolved them cleanly by merging the lead developer features and reviewer verification criteria, staged, committed resolution commit `6966f1a`, and deleted the temporary simulation branch.
+  7. **Release Baseline Tagging:**
+     - Merged Pull Request #2 into `develop` (`e51885b`).
+     - Merged `develop` into `main` and tagged annotated release `v0.1.0`.
+- **Why It Matters:** Fulfills all functional capabilities required for the platform's Minimum Viable Product (MVP), validates system integrity through 30 automated tests, demonstrates mastery of team Git workflows and conflict resolution, and marks an immutable release milestone.
+- **How It Works:**
+  - When an Analyst logs in, they can create plan drafts and submit them for review.
+  - When an Administrator logs in, they review submitted plans, publish them to the live catalog, and inspect dashboard metrics.
+  - When a Customer visits the site, they input their monthly data needs, call minutes, and maximum budget. The recommendation engine evaluates all published plans within budget, computes weighted scores, and returns a ranked list with score breakdowns.
+- **Tools Used:** Git, Java 17, Spring Boot 3, Spring Security 6 (BCrypt), Spring Data JPA, Thymeleaf, Bootstrap 5, JUnit 5, MockMvc, GitHub CLI (`gh`).
+- **Important Files:**
+  - `src/main/java/com/mpr/platform/model/User.java`: User domain entity.
+  - `src/main/java/com/mpr/platform/model/RecommendationRequest.java`: Recommendation input entity.
+  - `src/main/java/com/mpr/platform/model/RecommendationResult.java`: Recommendation score result entity.
+  - `src/main/java/com/mpr/platform/service/UserService.java`: User registration and Spring Security UserDetailsService.
+  - `src/main/java/com/mpr/platform/service/PlanService.java`: Plan lifecycle transitions, search, and dashboard aggregation.
+  - `src/main/java/com/mpr/platform/service/RecommendationService.java`: 4-factor scoring engine.
+  - `src/main/java/com/mpr/platform/config/SecurityConfig.java`: Role guards and route permissions.
+  - `src/main/resources/templates/dashboard/summary.html`: Metric charts and summary cards.
+  - `src/main/resources/templates/recommendations/form.html` & `results.html`: Customer recommendation flow.
+  - `docs/git-collaboration-demo.md`: Safe documentation conflict evidence artifact.
+  - `docs/task-reports/task-06.md`: Official Task 6 milestone report.
+- **Commands Executed:**
+  ```powershell
+  git checkout -b feature/6-mvp-completion develop
+  mvn test                                                   # Result: 30 tests run, 0 failures, 0 errors
+  git add src/ pom.xml
+  git commit -m "feat(mvp): complete MVP auth, role workflows, recommendations, and dashboard (Task 6)"
+  # Simulated controlled merge conflict
+  git add docs/git-collaboration-demo.md ; git commit -m "docs: add initial collaboration documentation note"
+  git checkout -b conflict-simulation develop
+  # Added conflicting content
+  git add docs/git-collaboration-demo.md ; git commit -m "docs: add peer reviewer collaboration note"
+  git checkout feature/6-mvp-completion
+  git merge conflict-simulation                             # Outcome: CONFLICT (add/add)
+  # Cleanly resolved conflict markers
+  git add docs/git-collaboration-demo.md ; git commit -m "docs: resolve merge conflict in git-collaboration-demo.md cleanly"
+  git branch -d conflict-simulation
+  git push -u origin feature/6-mvp-completion
+  gh pr create --base develop --head feature/6-mvp-completion
+  gh pr merge 2 --merge
+  git checkout develop ; git pull origin develop
+  git checkout main ; git merge develop ; git push origin main
+  git tag -a v0.1.0 -m "Release v0.1.0: Complete Mobile Plan Recommendation Platform MVP"
+  git push origin v0.1.0
+  ```
+- **Testing and Verification:**
+  - `PlanServiceTest` (9 tests): Status transitions (`DRAFT → IN_REVIEW`, `IN_REVIEW → PUBLISHED`, `PUBLISHED → ARCHIVED`), analyst rejection on publishing, invalid transition rejection, search filtering, and dashboard metric counts.
+  - `RecommendationServiceTest` (4 tests): Budget exclusion, weight respect, non-published exclusion, and zero-match boundary test.
+  - `UserServiceTest` (4 tests): User registration, duplicate username handling, seed account initialization, and user lookup.
+  - `PlanControllerTest` (12 tests): Routing, security role permissions, form validation, and REST API serialization.
+  - `MobilePlanRecommendationApplicationTests` (1 test): Spring Boot context loading.
+  - **Total:** 30 tests run, 0 failures, 0 errors, 0 skipped.
+- **Git Activity:**
+  - Feature Branch: `feature/6-mvp-completion`
+  - Pull Request: [PR #2](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/2) (Merged into `develop`)
+  - Integration Merge Commit: `e51885b`
+  - Release Tag: [`v0.1.0`](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0) on `main`
+- **Evidence:**
+  - Task Report: [docs/task-reports/task-06.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-06.md)
+  - GitHub PR #2: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/2`
+  - GitHub Tag v0.1.0: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0`
+  - Conflict Demonstration Artifact: [docs/git-collaboration-demo.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/git-collaboration-demo.md)
+- **Problems Encountered:**
+  - *Problem:* Testing role-protected REST endpoints (`/api/dashboard/summary`) in `PlanControllerTest` initially failed with HTTP 403 Forbidden.  
+    *Root Cause:* MockMvc requests without security context default to anonymous, and the dashboard summary endpoint is restricted to `ROLE_ADMINISTRATOR`.  
+    *Resolution:* Annotated the dashboard slice tests with `@WithMockUser(roles = "ADMINISTRATOR")` to provide the required authority context during testing.
+- **Remaining Work:** None. Task 6 MVP is 100% complete, tested, merged, and tagged.
+- **Completion Status:** **Completed** (Verified locally and published on GitHub).
 - **Viva Preparation:**
-  - *Q1: What causes a Git merge conflict and how is it resolved?*  
-    *Answer:* A conflict occurs when different branches make conflicting changes to the same lines of a file. Git pauses the merge, marks conflicts with `<<<<<<<`, `=======`, and `>>>>>>>`, and requires the developer to manually select the correct code, test it, and commit the resolution.
-  - *Q2: What is a Git tag?*  
-    *Answer:* A tag is an immutable reference pointing to a specific commit in Git history, typically used to mark release milestones like `v1.0.0`.
+  - *Q1: How does BCrypt password hashing enhance security in Spring Security?*  
+    *Answer:* BCrypt incorporates a random salt to protect against rainbow table attacks and uses an adaptable work factor (cost parameter) that slows down computation to thwart brute-force password cracking. Passwords are never stored in plain text.
+  - *Q2: Explain the plan status transition state machine and how invalid jumps are guarded.*  
+    *Answer:* The platform strictly enforces `DRAFT → IN_REVIEW` (Analyst/Admin), `IN_REVIEW → PUBLISHED` (Admin), and `PUBLISHED → ARCHIVED` (Admin). `PlanService.transitionStatus()` programmatically checks the entity's current status and user role before applying mutations, throwing an `IllegalStateException` on unauthorized moves (e.g. Analyst publishing) or invalid skips (e.g. `DRAFT → PUBLISHED`).
+  - *Q3: Explain the mathematical formula used by the recommendation engine.*  
+    *Answer:* It calculates a weighted linear composite score: $\text{Score} = (0.35 \times \text{DataScore}) + (0.25 \times \text{VoiceScore}) + (0.25 \times \text{PriceScore}) + (0.15 \times \text{PerksScore})$, where Data and Voice scores evaluate quota fulfillment, Price score awards higher points for greater savings below customer budget, and Perks score rewards matching OTT/benefit preferences. Plans priced above budget are strictly filtered out.
+  - *Q4: What causes a Git merge conflict, and how did you demonstrate resolving it?*  
+    *Answer:* A merge conflict happens when Git cannot automatically reconcile differing modifications made to the same lines of code in two branches being merged. We demonstrated this safely in `docs/git-collaboration-demo.md` by branching `conflict-simulation`, creating conflicting lines, merging it into `feature/6-mvp-completion`, observing Git's conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`), manually editing the file to incorporate both lead and peer review notes, staging the resolved file with `git add`, and recording the merge commit.
+  - *Q5: What is the purpose of an annotated Git tag like v0.1.0?*  
+    *Answer:* An annotated tag (`git tag -a`) is stored as a full Git object containing the tagger name, email, date, and a release message, pointing to an exact commit SHA. It acts as an immutable milestone indicating that the codebase has satisfied all acceptance tests and represents a release baseline ready for CI/CD automation.
 
 ---
 
@@ -456,17 +559,18 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `develop` (clean working tree, merged PR #1) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, and `feature/5-create-view-plans` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
-| **Latest Commit SHA** | `07437a2` (`Merge pull request #1 from feature/5-create-view-plans`) | `git log -n 1 --oneline` |
-| **Working Application Features** | Plan entity with 8 attributes, Plan catalogue list view with status badges, Plan detail view with audit info, Analyst plan creation form (`DRAFT` enforcement), role-based visibility filtering (`CUSTOMER` sees only `PUBLISHED`, `ANALYST`/`ADMINISTRATOR` sees all), REST APIs (`/api/plans`), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
-| **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan seeding active. | `src/main/resources/application.properties` |
-| **Test Suite Results** | 12 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest`, `PlanControllerTest`, `MobilePlanRecommendationApplicationTests`). | Maven Surefire Test Report (`target/surefire-reports/`) |
+| **Active Local Branch** | `develop` (clean working tree, merged PR #2, synced with `main`) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
+| **Latest Commit SHA** | `e51885b` (`Merge pull request #2 from feature/6-mvp-completion`) | `git log -n 1 --oneline` |
+| **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
+| **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
+| **Test Suite Results** | 30 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]). | Maven Surefire Test Report (`target/surefire-reports/`) |
 | **Jenkins Status** | Not started (Planned for Tasks 7 & 8). | N/A |
 | **Docker Status** | Not started (Planned for Tasks 11 & 12). | N/A |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
 | **Verified Working Ports** | Local development default: `8080`. Planned Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` |
-| **Known Blockers** | None. Feature 5 implemented and verified. | `TASK-TRACKER.md` |
+| **Known Blockers** | None. Tasks 1–6 complete, tested, and published. | `TASK-TRACKER.md` |
 
 ---
 
@@ -475,6 +579,7 @@ flowchart TD
 - **Version Control System (VCS):** Software (like Git) that records changes to files over time, enabling developers to recall specific versions, compare differences, and collaborate without overwriting each other's work.
 - **GitFlow:** A branching model where `main` contains production releases, `develop` serves as the integration branch, and dedicated `feature/` branches isolate task development.
 - **Pull Request (PR):** A mechanism in Git hosting platforms (like GitHub) that notifies team members that a feature branch is ready for review, discussion, automated testing, and merging into a target branch.
+- **Merge Conflict Resolution:** The process of reconciling concurrent differing changes made to identical lines in two branches. Git marks conflicts using markers (`<<<<<<<`, `=======`, `>>>>>>>`), and the developer combines or chooses the correct edits, stages the resolved file, and commits the merge.
 - **Continuous Integration (CI):** An automated pipeline practice where code commits trigger automated compilation, static analysis, and test suites, ensuring regressions are detected immediately.
 - **Continuous Delivery (CD):** An extension of CI where code changes are automatically tested and packaged, producing an artifact ready to be deployed to testing or production environments.
 - **Continuous Deployment:** Full automation where every verified code change passing all test gates is deployed directly into production without human approval.
@@ -492,48 +597,53 @@ flowchart TD
 
 ## Section F: End-to-End Demonstration Guide
 
-When demonstrating the project in its current state (Tasks 1–4 Completed) to an evaluator:
+When demonstrating the project in its current state (Tasks 1–6 Completed — Full MVP) to an evaluator:
 
-### Step 1: Explain the Project Scope & Architecture
+### Step 1: Explain the Project Scope, Architecture & State Machine
 - **Action:** Open `README.md` and `PROJECT-PROGRESS.md`.
-- **Explain:** Describe the real-world problem (confusing mobile plan options and unreviewed catalogue updates), the 3 roles (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), the 4 plan states (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), and the end-to-end DevOps pipeline.
+- **Explain:** Describe the real-world problem (confusing mobile plan tariffs and unreviewed catalogue updates), the 3 roles (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), the 4 plan states (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), and the rule-based recommendation formula (35% data, 25% calls, 25% budget savings, 15% perks).
 
-### Step 2: Show GitHub Source Control & Branching
+### Step 2: Show GitHub Source Control, PRs, and Release Tag
 - **Action:** Navigate to [https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform).
-- **Explain:** Show the published repository under owner `SrishtiYadav1904`. Highlight the two branches (`main` and `develop`), the issue templates (`.github/ISSUE_TEMPLATE/`), the pull request template, and the `.gitignore` preventing secrets and binaries from entering Git.
+- **Explain:**
+  - Show the branches (`main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`).
+  - Show the Pull Requests: PR #1 (Feature 5) and PR #2 (Feature 6 MVP), both cleanly merged.
+  - Show Release Tag `v0.1.0` marking the production-ready baseline.
+  - Show `docs/git-collaboration-demo.md` demonstrating real-world merge conflict resolution.
 
-### Step 3: Demonstrate Local Maven Build & Test Execution
+### Step 3: Demonstrate Automated Test Suite Execution
 - **Action:** Open PowerShell in the project directory and run:
   ```powershell
-  mvn clean test
+  mvn test
   ```
-- **Explain:** Point out that Maven compiles Java 17 source files using Spring Boot 3.2.5, starts an in-memory H2 database, exposes Actuator endpoints, and executes `MobilePlanRecommendationApplicationTests` with 0 failures and 0 errors.
+- **Explain:** Point out that Maven executes 30 unit, repository, service, and controller tests with 0 failures, testing status transition boundaries, recommendation budget limits, role-based security, and REST endpoints.
 
-### Step 4: Demonstrate Application Startup & Aesthetics
+### Step 4: Demonstrate Running Application & Features
 - **Action:** Run:
   ```powershell
   mvn spring-boot:run
   ```
 - **Open Browser:** Navigate to `http://localhost:8080`.
-- **Explain:** Point out the clean light-themed UI featuring soft pink (`#E86A92`) and lilac (`#8E7CC3`) accents.
-- **Open Health Probe:** Navigate to `http://localhost:8080/actuator/health`.
-- **Explain:** Show the `{"status":"UP"}` JSON response, which serves as the automated health check for Jenkins and Ansible in upcoming tasks.
+- **Demonstrate:**
+  1. **Catalogue View:** Browse 24 realistic Indian operator plans (Jio, Airtel, Vi, BSNL) filtered with soft pink/lilac styling.
+  2. **Recommendation Form:** Visit `/recommendations`, enter customer monthly data (e.g. 50 GB), voice minutes (1000 mins), and budget (₹500). Inspect the ranked recommendation results and score breakdown pills.
+  3. **Role-Based Login:** Visit `/login`, log in as `admin` (password: `admin123`).
+  4. **Executive Dashboard:** Access `/dashboard` to view real-time plan status distribution and average price metrics across operators.
+  5. **Health Probe:** Visit `http://localhost:8080/actuator/health` to show `{"status":"UP"}`.
 
 ---
 
 ## Section G: Next Steps
 
-### Immediate Next Task: Task 5 — Feature Development with Branching
+### Immediate Next Task: Task 7 — Jenkins Installation and Continuous Integration Job
 
-- **Goal:** Implement the foundational mobile plan catalog creation and view features for Analysts and Customers on a dedicated Git branch.
+- **Goal:** Set up and verify the Jenkins CI environment, install required plugins (Git, Pipeline, Maven Integration, JUnit), and create a Freestyle or Pipeline CI job pulling from `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform.git`.
 - **Prerequisites:**
-  - Task 4 completed and verified (Satisfied ✅).
-  - Branching from `develop` branch.
+  - Task 6 MVP completed and verified with release tag `v0.1.0` (Satisfied ✅).
+  - Jenkins server available on port 8080.
+  - Port collision policies respected: Jenkins on 8080, Tomcat on 8084, Docker host on 8085; avoid 8072, 8081, 8082.
 - **Actions Required:**
-  1. Check out a new branch: `git checkout -b feature/5-create-view-plans develop`.
-  2. Create the `Plan` JPA entity with the 8 approved attributes:
-     - Operator, Name, Price, Validity (days), Daily Data (GB), Voice Minutes, SMS Count, Benefits, and Status (`DRAFT`).
-  3. Create `PlanRepository`, `PlanService`, and `PlanController`.
-  4. Create Thymeleaf templates: `plan-create.html` (Analyst creation form) and `plan-list.html` (Catalogue listing with customer visibility restriction).
-  5. Add unit and integration tests.
-  6. Commit changes with meaningful messages, push `feature/5-create-view-plans` to GitHub, and create a Pull Request targeting `develop`.
+  1. Inspect local Jenkins environment, version, and running port.
+  2. Configure Jenkins credentials and connect to GitHub repository.
+  3. Author CI job configuration executing `mvn clean test` and capturing JUnit reports.
+  4. Run build, record build logs, verify test report visualization, and update `docs/task-reports/task-07.md`.
