@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalogue Summary Dashboard — Plan Platform</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" href="/css/styles.css">
+</head>
+<body>
+    <header class="brand-header">
+        <a th:href="@{/}" href="/" class="brand-title">
+            <span>📱</span> Mobile Plan Recommendation Platform
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/plans}" class="nav-link">Catalogue</a>
+            <a th:href="@{/dashboard}" class="nav-link active">Dashboard</a>
+            <a th:href="@{/plans/new}" class="btn-primary-mpr btn-sm">+ Create Plan</a>
+            <form th:action="@{/logout}" method="post" style="display:inline;">
+                <button type="submit" class="btn-secondary-mpr btn-sm">Log out</button>
+            </form>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Executive Summary Dashboard</h1>
+                <p class="page-subtitle">Catalogue distribution across operators, lifecycle status metrics, and pricing analytics.</p>
+            </div>
+            <a th:href="@{/plans}" class="btn-secondary-mpr">← View Catalogue</a>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="plan-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
+            <div class="plan-card" style="text-align: center; padding: 1.5rem;">
+                <span class="spec-label">Total Tariffs</span>
+                <span style="font-size: 2.25rem; font-weight: 800; color: var(--accent-lilac);" th:text="${totalPlans}">24</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">In system catalog</span>
+            </div>
+
+            <div class="plan-card" style="text-align: center; padding: 1.5rem;">
+                <span class="spec-label">Published Tariffs</span>
+                <span style="font-size: 2.25rem; font-weight: 800; color: #059669;"
+                      th:text="${statusCounts.get(T(com.mpr.platform.model.PlanStatus).PUBLISHED)}">16</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Visible to customers</span>
+            </div>
+
+            <div class="plan-card" style="text-align: center; padding: 1.5rem;">
+                <span class="spec-label">Pending Review</span>
+                <span style="font-size: 2.25rem; font-weight: 800; color: #D97706;"
+                      th:text="${statusCounts.get(T(com.mpr.platform.model.PlanStatus).IN_REVIEW)}">3</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Awaiting Admin approval</span>
+            </div>
+
+            <div class="plan-card" style="text-align: center; padding: 1.5rem;">
+                <span class="spec-label">Average Plan Price</span>
+                <span style="font-size: 2.25rem; font-weight: 800; color: var(--accent-pink);"
+                      th:text="'₹' + ${#numbers.formatDecimal(avgPrice, 1, 2)}">₹689.00</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Across all carriers</span>
+            </div>
+
+            <div class="plan-card" style="text-align: center; padding: 1.5rem;">
+                <span class="spec-label">Queries Processed</span>
+                <span style="font-size: 2.25rem; font-weight: 800; color: var(--text-main);"
+                      th:text="${totalRecommendations}">12</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Recommendations served</span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
+            <!-- Breakdown by Lifecycle Status -->
+            <div class="plan-card">
+                <h3 style="margin-top: 0; color: var(--text-main); font-size: 1.15rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                    Plans by Lifecycle Status
+                </h3>
+                <table class="detail-table" style="margin: 0.5rem 0;">
+                    <tr th:each="entry : ${statusCounts}">
+                        <td>
+                            <span th:class="'badge-status badge-status-' + ${entry.key}" th:text="${entry.key.displayName}">Draft</span>
+                        </td>
+                        <td style="text-align: right; font-weight: 700; font-size: 1.1rem;" th:text="${entry.value}">4</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Breakdown by Telecom Operator -->
+            <div class="plan-card">
+                <h3 style="margin-top: 0; color: var(--text-main); font-size: 1.15rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                    Plans & Average Price by Carrier
+                </h3>
+                <table class="detail-table" style="margin: 0.5rem 0;">
+                    <thead>
+                        <tr>
+                            <th>Carrier</th>
+                            <th style="text-align: center;">Total Plans</th>
+                            <th style="text-align: right;">Avg Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="entry : ${operatorCounts}">
+                            <td style="font-weight: 700;" th:text="${entry.key}">Jio</td>
+                            <td style="text-align: center;" th:text="${entry.value}">7</td>
+                            <td style="text-align: right; color: var(--accent-pink); font-weight: 600;"
+                                th:text="'₹' + ${#numbers.formatDecimal(avgPriceByOperator.get(entry.key), 1, 2)}">₹450.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

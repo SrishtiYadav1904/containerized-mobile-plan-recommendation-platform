@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Personalized Plan Recommendations</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" href="/css/styles.css">
+</head>
+<body>
+    <header class="brand-header">
+        <a th:href="@{/}" href="/" class="brand-title">
+            <span>📱</span> Mobile Plan Recommendation Platform
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/plans}" class="nav-link">Catalogue</a>
+            <a th:href="@{/recommendations}" class="nav-link active">Recommendations</a>
+            <span th:if="${username != 'Guest' and username != 'anonymousUser'}">
+                <form th:action="@{/logout}" method="post" style="display:inline;">
+                    <button type="submit" class="btn-secondary-mpr btn-sm">Log out</button>
+                </form>
+            </span>
+            <span th:unless="${username != 'Guest' and username != 'anonymousUser'}">
+                <a th:href="@{/login}" class="btn-secondary-mpr btn-sm">Sign in</a>
+            </span>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="form-card" style="max-width: 650px;">
+            <div class="page-header" style="margin-bottom: 1.5rem;">
+                <div>
+                    <h1 class="page-title">Personalized Plan Finder</h1>
+                    <p class="page-subtitle">Input your monthly mobile usage and budget to receive transparent, rule-ranked tariff recommendations.</p>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                💡 <strong>How it works:</strong> Our rule-based scoring engine evaluates <strong>Data Match (35%)</strong>, <strong>Calling Quota (25%)</strong>, <strong>Budget Savings (25%)</strong>, and <strong>Perks Match (15%)</strong>. Plans above your budget or unpublished plans are automatically filtered out.
+            </div>
+
+            <form th:action="@{/recommendations}" th:object="${request}" method="post">
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label" for="monthlyDataGb">Estimated Monthly Data Needed (GB) *</label>
+                        <input type="number" step="0.5" id="monthlyDataGb" th:field="*{monthlyDataGb}" class="form-control" placeholder="30.0" required>
+                        <small style="color: var(--text-muted);">e.g. 1.5 GB/day $\approx$ 45 GB/month</small>
+                        <div class="form-error" th:if="${#fields.hasErrors('monthlyDataGb')}" th:errors="*{monthlyDataGb}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="monthlyMinutes">Monthly Calling Minutes Needed *</label>
+                        <input type="number" id="monthlyMinutes" th:field="*{monthlyMinutes}" class="form-control" placeholder="500" required>
+                        <small style="color: var(--text-muted);">e.g. 500 mins or 0 if only using data</small>
+                        <div class="form-error" th:if="${#fields.hasErrors('monthlyMinutes')}" th:errors="*{monthlyMinutes}"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="budget">Maximum Budget Limit (₹ INR) *</label>
+                    <input type="number" step="1.0" id="budget" th:field="*{budget}" class="form-control" placeholder="500.00" required>
+                    <small style="color: var(--text-muted);">Plans priced above this amount will be excluded.</small>
+                    <div class="form-error" th:if="${#fields.hasErrors('budget')}" th:errors="*{budget}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="preferences">Service Preferences & OTT Perks</label>
+                    <input type="text" id="preferences" th:field="*{preferences}" class="form-control"
+                           placeholder="e.g. 5G, Disney+ Hotstar, Wynk, Binge Night">
+                    <small style="color: var(--text-muted);">Keywords separated by commas. Boosts plans matching your favorite services.</small>
+                </div>
+
+                <button type="submit" class="btn-primary-mpr" style="width: 100%; justify-content: center; margin-top: 1rem;">
+                    🔍 Compute Best Matching Plans
+                </button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>
