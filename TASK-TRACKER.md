@@ -8,7 +8,7 @@
 | 4 | Git and GitHub Repository Initialization | Completed | `docs/task-reports/task-04.md` |
 | 5 | Feature Development with Branching | Completed | `docs/task-reports/task-05.md` |
 | 6 | MVP Completion and Git Collaboration | Completed | `docs/task-reports/task-06.md` (PR #2 merged, Tag `v0.1.0`) |
-| 7 | Jenkins Installation and Continuous Integration Job | Not started | `docs/task-reports/task-07.md` |
+| 7 | Jenkins Installation and Continuous Integration Job | Completed | `docs/task-reports/task-07.md` (Build #2 SUCCESS, 30 tests passed, WAR archived) |
 | 8 | Pipeline as Code and Server Deployment | Not started | `docs/task-reports/task-08.md` |
 | 9 | Selenium Test Design and Local Execution | Not started | `docs/task-reports/task-09.md` |
 | 10 | Continuous Testing in Jenkins | Not started | `docs/task-reports/task-10.md` |

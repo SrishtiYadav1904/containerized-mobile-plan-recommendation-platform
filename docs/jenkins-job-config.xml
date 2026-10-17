@@ -1,0 +1,97 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1590.v49101d088542">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2291.v2934911987b_6"/>
+  </actions>
+  <description>Continuous Integration job for Containerized Mobile Plan Recommendation Platform (Srishti Yadav / Task 7)</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+        <removeLastBuild>false</removeLastBuild>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.SCMTrigger>
+          <spec>H/15 * * * *</spec>
+          <ignorePostCommitHooks>false</ignorePostCommitHooks>
+        </hudson.triggers.SCMTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@4362.v9b_991749898e">
+    <script>pipeline {
+    agent any
+    
+    triggers {
+        pollSCM('H/15 * * * *')
+    }
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 15, unit: 'MINUTES')
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out develop branch from repository...'
+                git branch: 'develop', url: 'https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform.git'
+            }
+        }
+        
+        stage('Compile and Test') {
+            steps {
+                echo 'Compiling source code and executing unit/integration tests...'
+                bat '''
+                    if exist mvnw.cmd (
+                        call mvnw.cmd -B clean test
+                    ) else (
+                        call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B clean test
+                    )
+                '''
+            }
+        }
+        
+        stage('Package') {
+            steps {
+                echo 'Packaging application artifact...'
+                bat '''
+                    if exist mvnw.cmd (
+                        call mvnw.cmd -B package -DskipTests
+                    ) else (
+                        call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B package -DskipTests
+                    )
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'target/*.war,target/*.jar', fingerprint: true
+        }
+        success {
+            echo '========================================================'
+            echo 'CI Pipeline completed successfully! Artifacts archived.'
+            echo '========================================================'
+        }
+        failure {
+            echo '========================================================'
+            echo 'CI Pipeline failed. Please inspect logs.'
+            echo '========================================================'
+        }
+    }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

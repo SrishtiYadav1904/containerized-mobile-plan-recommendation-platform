@@ -450,15 +450,100 @@ flowchart TD
 ---
 
 ### Task 7 — Jenkins Installation and Continuous Integration Job
-- **Task Objective:** Verify Jenkins availability, configure a continuous integration job for this repository with automated Git checkout, Maven clean test/package execution, JUnit test report publication, and artifact archiving.
-- **What Was Implemented:** *Not started yet.*
-- **Why It Matters:** Continuous Integration automatically verifies code on every push, catching bugs immediately and ensuring a working artifact is always available.
-- **Completion Status:** **Not started**.
+- **Task Objective:** Discover and reuse the existing Jenkins server on port 8080 without reinstalling, preserve existing jobs and port safety, configure a continuous integration pipeline job for `containerized-mobile-plan-recommendation-platform`, implement automated Git checkout from `develop`, clean test execution, WAR packaging, JUnit test report publication, artifact archiving, polling trigger schedule (`H/15 * * * *`), and verify execution with actual build logs and archived artifact evidence.
+- **What Was Implemented:**
+  1. **Jenkins Controller & Environment Discovery:**
+     - Verified Jenkins 2.568.1 running as an active Windows Service (`C:\Program Files\Jenkins\jenkins.exe`, PID 7308) bound to port `8080`.
+     - Confirmed `JENKINS_HOME` at `C:\ProgramData\Jenkins\.jenkins`.
+     - Confirmed installed toolchains: Java 21 LTS (`jdk-21.0.12`), Apache Maven 3.9.9 (`C:\Users\Shreyas\apache-maven-3.9.9`), and Git (`2.47.0.windows.1`).
+     - Strictly respected port collision policies: Kept Jenkins on `8080`; preserved existing coursework job `Driving-School-CI` untouched; strictly avoided forbidden ports `8072`, `8081`, and `8082`.
+  2. **Deterministic Build Setup (Maven Wrapper):**
+     - Generated and committed cross-platform Maven wrapper scripts (`mvnw`, `mvnw.cmd`, `.mvn/wrapper/maven-wrapper.properties`) locking Maven version 3.9.9 to guarantee identical build behavior across developer workstations and Jenkins CI agents.
+  3. **CI Architecture Documentation:**
+     - Authored `docs/ci-configuration.md` specifying CI pipeline architecture, trigger mechanisms (GitHub Webhook & SCM Polling `H/15 * * * *`), credentials policy, and port reservation compliance.
+  4. **Jenkins Pipeline Job Configuration (`Mobile-Plan-Recommendation-CI`):**
+     - Created and configured the Pipeline job via Jenkins REST API using session cookies and CSRF crumb authentication.
+     - Configured Git SCM pointing to `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform.git` tracking the `develop` branch.
+     - Added automated build trigger with polling schedule: `H/15 * * * *`.
+     - Configured resilient batch execution: Checks for `mvnw.cmd` and invokes `mvnw.cmd -B clean test`, with automatic fallback to global Maven binary.
+     - Configured packaging stage: `mvnw.cmd -B package -DskipTests` to assemble the WAR file.
+     - Configured post-build actions: Discovers and aggregates JUnit XML reports from `target/surefire-reports/*.xml`, and archives the deployable WAR artifact `target/*.war`.
+  5. **Verified Build Execution:**
+     - Executed Build #2 on the Jenkins controller.
+     - Build status: **SUCCESS** (Total duration: 1m 43s).
+     - Test results: **30 tests run, 30 passed, 0 failures, 0 skipped**.
+     - Archived artifact: `target/containerized-mobile-plan-recommendation-platform.war` (58,208,477 bytes, ~58 MB).
+- **Why It Matters:** Continuous Integration provides rapid feedback on code changes, detects regressions automatically, guarantees all 30 tests pass before merging, and packages verified, version-controlled artifacts ready for downstream deployment.
+- **How It Works:**
+  - Jenkins polls GitHub every 15 minutes.
+  - When changes are detected on `develop`, Jenkins clones the repository into its workspace.
+  - Jenkins triggers the Maven wrapper to compile code and execute JUnit 5 tests against the in-memory H2 database.
+  - Upon test success, Maven packages the Spring Boot application into an executable and container/Tomcat-deployable WAR file.
+  - The JUnit plugin parses test XML files and visualizes test trends in the Jenkins dashboard; the artifact archiver stores the resulting `.war` file in the build archive directory.
+- **Tools Used:** Jenkins 2.568.1 (Pipeline, Git, JUnit, Archiver plugins), Apache Maven 3.9.9, Maven Wrapper, Java 21, Git, PowerShell, GitHub CLI (`gh`).
+- **Important Files:**
+  - `docs/ci-configuration.md`: Comprehensive CI architecture and configuration guide.
+  - `docs/jenkins-job-config.xml`: XML definition of the Jenkins Pipeline job.
+  - `mvnw` & `mvnw.cmd`: Maven wrapper executables.
+  - `.mvn/wrapper/maven-wrapper.properties`: Maven wrapper version configuration.
+  - `docs/task-reports/task-07.md`: Official Task 7 milestone report.
+- **Commands Executed:**
+  ```powershell
+  # Check Jenkins service and port
+  Get-Service | Where-Object { $_.Name -match "jenkins" }
+  netstat -ano | findstr :8080
+  # Generate Maven wrapper
+  mvn wrapper:wrapper
+  # Feature branch workflow
+  git checkout -b feature/7-jenkins-ci-job develop
+  git add .mvn/ mvnw mvnw.cmd docs/ci-configuration.md
+  git commit -m "feat(ci): add maven wrapper and CI configuration guide (Task 7)"
+  git push -u origin feature/7-jenkins-ci-job
+  gh pr create --base develop --head feature/7-jenkins-ci-job ...
+  gh pr merge 3 --merge
+  git checkout develop ; git pull origin develop
+  git checkout main ; git merge develop ; git push origin main
+  # Trigger and monitor Jenkins build
+  curl.exe -b cookies.txt -X POST "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/build" -H "Jenkins-Crumb: <crumb>"
+  Invoke-RestMethod -Uri "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/2/api/json"
+  Invoke-RestMethod -Uri "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/2/testReport/api/json"
+  ```
+- **Testing and Verification:**
+  - Jenkins Build #2 executed with exit code 0.
+  - Jenkins JUnit Test Results:
+    - Total: 30 tests
+    - Passed: 30 tests
+    - Failed: 0 tests
+    - Skipped: 0 tests
+  - Archived Artifact verified on disk:
+    `C:\ProgramData\Jenkins\.jenkins\jobs\Mobile-Plan-Recommendation-CI\builds\2\archive\target\containerized-mobile-plan-recommendation-platform.war` (58.2 MB).
+- **Git Activity:**
+  - Feature Branch: `feature/7-jenkins-ci-job`
+  - Pull Request: [PR #3](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/3) (Merged into `develop`)
+  - Integration Commit: `209427d` on `develop` and `main`
+- **Evidence:**
+  - Task Report: [docs/task-reports/task-07.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-07.md)
+  - Jenkins Job: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`
+  - Jenkins Build #2: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/2/`
+  - GitHub PR #3: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/3`
+  - CI Configuration Guide: [docs/ci-configuration.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/ci-configuration.md)
+- **Problems Encountered:**
+  - *Problem:* Build #1 initially failed with `'mvn' is not recognized as an internal or external command`.  
+    *Root Cause:* Jenkins runs under the Windows `NT AUTHORITY\SYSTEM` service account, which does not inherit user-level environment variables where Maven was added to PATH.  
+    *Resolution:* Updated the pipeline script to prioritize `mvnw.cmd` (Maven wrapper located in the repository root) with an explicit fallback to `"C:\Users\Shreyas\apache-maven-3.9.9\bin\mvn.cmd"`. Build #2 passed seamlessly.
+- **Remaining Work:** None. Task 7 is fully verified with actual Jenkins execution evidence.
+- **Completion Status:** **Completed** (Verified on Jenkins controller).
 - **Viva Preparation:**
-  - *Q1: What is Continuous Integration (CI)?*  
-    *Answer:* CI is a software development practice where developers frequently integrate code into a shared repository, and each integration is verified by an automated build and test runner to detect defects rapidly.
-  - *Q2: Why should build artifacts be archived in Jenkins?*  
-    *Answer:* Archiving stores the exact deployable WAR/JAR generated during a verified build so it can be deployed or audited without recompiling.
+  - *Q1: What is the difference between SCM Polling and Webhook triggers in Jenkins?*  
+    *Answer:* SCM Polling is a pull-based mechanism where Jenkins periodically queries the remote Git repository (e.g., every 15 minutes via `H/15 * * * *`) to check for new commit hashes. A Webhook is a push-based mechanism where GitHub instantly notifies Jenkins via an HTTP POST request immediately upon a commit push, eliminating polling latency.
+  - *Q2: Why is the Maven Wrapper (mvnw) preferred over a globally installed Maven binary in CI/CD?*  
+    *Answer:* The Maven wrapper bundles the exact Maven version specification in `.mvn/wrapper/maven-wrapper.properties` and downloads it automatically if missing. This guarantees that all developers and CI server agents execute builds using identical Maven binaries, preventing "works on my machine" version incompatibilities.
+  - *Q3: How does Jenkins capture and display JUnit test results?*  
+    *Answer:* Maven Surefire plugin writes XML test execution reports to `target/surefire-reports/TEST-*.xml`. The Jenkins JUnit plugin (`junit 'target/surefire-reports/*.xml'`) parses these files, records pass/fail counts, extracts failure stack traces, and renders historical trend graphs on the job overview page.
+  - *Q4: What is the purpose of the buildDiscarder option in Jenkins pipelines?*  
+    *Answer:* `buildDiscarder(logRotator(numToKeepStr: '10'))` automatically purges old build logs and archived artifacts beyond the last 10 builds, preventing the Jenkins host disk from running out of storage space.
+  - *Q5: Why must CI pipelines enforce port reservation policies?*  
+    *Answer:* CI build and test runners must avoid binding to ports assigned to production services or concurrent applications. In our platform, Jenkins runs on port `8080`, unit tests use in-memory ephemeral ports/H2 database, Tomcat is reserved for `8084`, and Docker host is reserved for `8085`, strictly avoiding ports `8072`, `8081`, and `8082` which are actively occupied by other system processes.
 
 ---
 
@@ -559,18 +644,19 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `develop` (clean working tree, merged PR #2, synced with `main`) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Active Local Branch** | `develop` (clean working tree, merged PR #3, synced with `main`) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
-| **Latest Commit SHA** | `e51885b` (`Merge pull request #2 from feature/6-mvp-completion`) | `git log -n 1 --oneline` |
+| **Latest Commit SHA** | `209427d` (`Merge pull request #3 from feature/7-jenkins-ci-job`) | `git log -n 1 --oneline` |
 | **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
-| **Test Suite Results** | 30 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]). | Maven Surefire Test Report (`target/surefire-reports/`) |
-| **Jenkins Status** | Not started (Planned for Tasks 7 & 8). | N/A |
+| **Test Suite Results** | 30 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]). All 30 tests published and verified in Jenkins JUnit reporting. | Jenkins Test Report (`http://localhost:8080/job/Mobile-Plan-Recommendation-CI/2/testReport/`) |
+| **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured on Jenkins 2.568.1 (port 8080). Build #2 executed with status `SUCCESS` (30/30 tests passed, WAR archived). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
+| **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB) | Jenkins Build #2 Archive on disk |
 | **Docker Status** | Not started (Planned for Tasks 11 & 12). | N/A |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
-| **Verified Working Ports** | Local development default: `8080`. Planned Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` |
-| **Known Blockers** | None. Tasks 1–6 complete, tested, and published. | `TASK-TRACKER.md` |
+| **Verified Working Ports** | Jenkins Controller: `8080`. Planned Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` |
+| **Known Blockers** | None. Tasks 1–7 complete, tested, and published. | `TASK-TRACKER.md` |
 
 ---
 
@@ -584,6 +670,9 @@ flowchart TD
 - **Continuous Delivery (CD):** An extension of CI where code changes are automatically tested and packaged, producing an artifact ready to be deployed to testing or production environments.
 - **Continuous Deployment:** Full automation where every verified code change passing all test gates is deployed directly into production without human approval.
 - **Build Lifecycle (Maven):** A sequence of phases including `validate`, `compile`, `test`, `package`, `verify`, `install`, and `deploy`. Running `mvn clean test` cleans previous build outputs, compiles source code, and executes test suites.
+- **Maven Wrapper (mvnw):** A cross-platform script and properties bundle that downloads and invokes a project-locked Maven version without requiring a manual Maven installation on the host system.
+- **SCM Polling:** A periodic pull mechanism where Jenkins queries Git remote branches (e.g. `H/15 * * * *`) to discover new commits and trigger builds when inbound webhooks cannot penetrate local firewalls.
+- **JUnit Plugin:** A Jenkins plugin that aggregates and renders XML test reports generated during Maven test runs, tracking pass rates and failure trends across builds.
 - **Web Application Archive (WAR):** A compressed package containing web application resources (servlets, JSPs/HTML, Java classes, libraries) designed for deployment on Java web application servers like Apache Tomcat.
 - **Spring Boot Actuator:** A Spring sub-framework providing production metrics, health checks (`/actuator/health`), thread dumps, and application info via standard HTTP endpoints.
 - **Headless Browser:** A web browser that executes without a visible user interface, operated programmatically (e.g., via Selenium WebDriver) for automated integration testing in CI environments.
@@ -597,7 +686,7 @@ flowchart TD
 
 ## Section F: End-to-End Demonstration Guide
 
-When demonstrating the project in its current state (Tasks 1–6 Completed — Full MVP) to an evaluator:
+When demonstrating the project in its current state (Tasks 1–7 Completed — Full MVP & Working Jenkins CI) to an evaluator:
 
 ### Step 1: Explain the Project Scope, Architecture & State Machine
 - **Action:** Open `README.md` and `PROJECT-PROGRESS.md`.
@@ -606,17 +695,19 @@ When demonstrating the project in its current state (Tasks 1–6 Completed — F
 ### Step 2: Show GitHub Source Control, PRs, and Release Tag
 - **Action:** Navigate to [https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform).
 - **Explain:**
-  - Show the branches (`main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`).
-  - Show the Pull Requests: PR #1 (Feature 5) and PR #2 (Feature 6 MVP), both cleanly merged.
+  - Show the branches (`main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`).
+  - Show the Pull Requests: PR #1, PR #2, and PR #3, all cleanly merged.
   - Show Release Tag `v0.1.0` marking the production-ready baseline.
   - Show `docs/git-collaboration-demo.md` demonstrating real-world merge conflict resolution.
+  - Show `docs/ci-configuration.md` explaining the CI pipeline architecture.
 
-### Step 3: Demonstrate Automated Test Suite Execution
-- **Action:** Open PowerShell in the project directory and run:
-  ```powershell
-  mvn test
-  ```
-- **Explain:** Point out that Maven executes 30 unit, repository, service, and controller tests with 0 failures, testing status transition boundaries, recommendation budget limits, role-based security, and REST endpoints.
+### Step 3: Demonstrate Jenkins CI Pipeline & Test Reports
+- **Action:** Open browser to `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`.
+- **Explain:**
+  - Point out that Jenkins is running locally on port `8080` without port conflict.
+  - Show Build #2 status: **SUCCESS** with green pipeline stage view (Checkout $\rightarrow$ Compile and Test $\rightarrow$ Package).
+  - Open **Test Result** link: show 30/30 tests passing with zero failures.
+  - Open **Build Artifacts**: show the archived 58 MB `containerized-mobile-plan-recommendation-platform.war` artifact.
 
 ### Step 4: Demonstrate Running Application & Features
 - **Action:** Run:
@@ -635,15 +726,16 @@ When demonstrating the project in its current state (Tasks 1–6 Completed — F
 
 ## Section G: Next Steps
 
-### Immediate Next Task: Task 7 — Jenkins Installation and Continuous Integration Job
+### Immediate Next Task: Task 8 — Pipeline as Code and Server Deployment
 
-- **Goal:** Set up and verify the Jenkins CI environment, install required plugins (Git, Pipeline, Maven Integration, JUnit), and create a Freestyle or Pipeline CI job pulling from `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform.git`.
+- **Goal:** Author a root-level declarative `Jenkinsfile` incorporating stages for Checkout, Build, Unit/Integration Test, Package, Archive, and Deployment to standalone Apache Tomcat 10.1 on port `8084`, parameterized with `DEPLOY_ENV` or `APP_PORT`, and verified with `/actuator/health`.
 - **Prerequisites:**
-  - Task 6 MVP completed and verified with release tag `v0.1.0` (Satisfied ✅).
-  - Jenkins server available on port 8080.
+  - Task 7 CI Job completed and verified on Jenkins (Satisfied ✅).
+  - Tomcat 10.1 configured for port 8084.
   - Port collision policies respected: Jenkins on 8080, Tomcat on 8084, Docker host on 8085; avoid 8072, 8081, 8082.
 - **Actions Required:**
-  1. Inspect local Jenkins environment, version, and running port.
-  2. Configure Jenkins credentials and connect to GitHub repository.
-  3. Author CI job configuration executing `mvn clean test` and capturing JUnit reports.
-  4. Run build, record build logs, verify test report visualization, and update `docs/task-reports/task-07.md`.
+  1. Create `feature/8-pipeline-server-deploy` branch from `develop`.
+  2. Create root-level `Jenkinsfile` with declarative pipeline stages.
+  3. Configure safe deployment to Tomcat 10.1 on port `8084`.
+  4. Implement post-deployment health check verifying HTTP 200 from `/actuator/health`.
+  5. Verify pipeline execution, record build logs, update `docs/task-reports/task-08.md`, `TASK-TRACKER.md`, and `PROJECT-PROGRESS.md`.
