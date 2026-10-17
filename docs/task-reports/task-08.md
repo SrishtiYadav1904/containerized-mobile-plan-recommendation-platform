@@ -3,96 +3,100 @@
 ## Task report
 
 - **Task:** Task 8 — Pipeline as Code and Server Deployment
-- **Status:** Completed
+- **Status:** Completed (Fully Verified with Live Tomcat 10.1 Deployment & Health Check)
 - **Date:** 2026-10-18
-- **Goal:** Author a root-level declarative `Jenkinsfile` implementing Pipeline as Code with stages for checkout, environment/port policy validation, compile and test (fatal gate), package, archive/report, and deployment to Apache Tomcat 10.1 on port `8084`; parameterize deployment settings (`DEPLOY_ENV`, `APP_PORT`, `TOMCAT_HOME`, `DEPLOY_WAR`); strictly enforce port reservation policies avoiding forbidden ports `8072`, `8081`, and `8082`; provide complete server deployment documentation and health check procedures; accurately report server deployment as pending since standalone Tomcat is not installed on the host; and verify pipeline execution on Jenkins.
+- **Goal:** Author a root-level declarative `Jenkinsfile` implementing Pipeline as Code with stages for checkout, environment/port policy validation, compile and test (fatal gate), package, archive/report, and deployment to Apache Tomcat 10.1 on port `8084`; parameterize deployment settings (`DEPLOY_ENV`, `APP_PORT`, `TOMCAT_HOME`, `DEPLOY_WAR`); strictly enforce port reservation policies avoiding forbidden ports `8072`, `8081`, and `8082`; implement robust post-deployment health check verification with retries and diagnostics; and verify pipeline execution on Jenkins.
 
 - **What was implemented:**
   1. **Root-Level `Jenkinsfile` (Declarative Pipeline as Code):**
      - Authored `Jenkinsfile` in repository root using structured declarative syntax.
      - **Configured Parameters:**
        - `DEPLOY_ENV`: Choice parameter (`local-tomcat`, `staging`, `production`), default `local-tomcat`.
-       - `APP_PORT`: String parameter, default `8084`.
-       - `TOMCAT_HOME`: String parameter, default `C:\apache-tomcat-10.1`.
+       - `APP_PORT`: String parameter, default `8084` (Forbidden: `8072, 8081, 8082`).
+       - `TOMCAT_HOME`: String parameter, default `E:\Downloads\apache-tomcat-10.1.61` (with auto-detection fallback to `C:\apache-tomcat-10.1`).
        - `DEPLOY_WAR`: Boolean parameter, default `true`.
      - **Pipeline Stages:**
        - **Stage 1 (Checkout):** SCM checkout from `develop` branch.
        - **Stage 2 (Environment & Port Validation):** Validates Git, Java 21, and Maven wrapper. Explicitly checks `APP_PORT` against forbidden list (`8072, 8081, 8082`) and aborts with fatal error if violated.
-       - **Stage 3 (Compile and Test):** Executes `mvnw.cmd -B clean test`. Test failures are fatal and prevent downstream packaging/deployment.
+       - **Stage 3 (Compile and Test):** Executes `mvnw.cmd -B clean test`. Test failures are fatal gates preventing downstream packaging/deployment.
        - **Stage 4 (Package):** Runs `mvnw.cmd -B package -DskipTests` to produce `target/containerized-mobile-plan-recommendation-platform.war`.
        - **Stage 5 (Archive and Report):** Publishes JUnit test reports (`target/surefire-reports/*.xml`) and archives deployable WAR/JAR artifacts with fingerprinting.
-       - **Stage 6 (Deploy to Server):** Safe, conditional server deployment stage. Checks if Apache Tomcat exists at `TOMCAT_HOME`. If present, copies WAR to `webapps/mpr-platform.war` and probes `/actuator/health`. If absent (current machine state), logs clear diagnostic status marking deployment as **PENDING** without failing the pipeline build, per task instructions.
-       - **Post Actions:** Comprehensive summary notifications on build completion.
-  2. **Server Deployment Guide (`docs/server-deployment-guide.md`):**
+       - **Stage 6 (Deploy to Server):** Conditional server deployment stage. Detects Apache Tomcat 10.1, performs binary deployment via PowerShell `Copy-Item -Force` to `webapps/mpr-platform.war`, and invokes `scripts/health-check.ps1` to poll `/actuator/health` with exponential retries and diagnostic reporting.
+       - **Post Actions:** Comprehensive notifications on build completion.
+  2. **Robust Deployment Health Check Script (`scripts/health-check.ps1`):**
+     - Dedicated, testable PowerShell script that queries `http://localhost:$Port/$ContextPath/actuator/health`.
+     - Validates HTTP 200 response code and parses JSON body to confirm `"status":"UP"`.
+     - Retries every 3 seconds up to a configurable timeout (default 60s) to give Tomcat sufficient time to unpack and initialize the Spring Boot context.
+     - Exits with code 0 on success, or code 1 on failure with actionable diagnostics.
+  3. **Server Deployment Guide (`docs/server-deployment-guide.md`):**
      - Detailed installation and configuration guide for Apache Tomcat 10.1 on Windows.
-     - Step-by-step instructions for port 8084 configuration in `conf/server.xml` and shutdown port 8006 to eliminate port collisions.
-     - Manager credentials setup in `conf/tomcat-users.xml`.
-     - Automated and manual drop-in deployment procedures.
-     - Post-deployment health verification instructions using `http://localhost:8084/mpr-platform/actuator/health`.
-  3. **Jenkins SCM Job Transition:**
-     - Updated Jenkins job `Mobile-Plan-Recommendation-CI` definition from inline script to `CpsScmFlowDefinition` pointing to `Jenkinsfile` on `develop`.
-  4. **Verified Pipeline Execution:**
-     - Executed Build #4 on Jenkins.
-     - All 6 stages completed successfully.
-     - Result: `SUCCESS` (Duration: ~59s).
-     - Test Result: 30/30 tests passed, 0 failures.
-     - Artifact archived: `containerized-mobile-plan-recommendation-platform.war`.
-     - Deployment stage: Evaluated Tomcat path, accurately reported `[DEPLOYMENT STATUS: PENDING - TOMCAT NOT DETECTED]`.
+     - Port 8084 HTTP connector and port 8006 shutdown configuration in `conf/server.xml`.
+     - Role configuration and credentials in `conf/tomcat-users.xml`.
+     - Drop-in and pipeline deployment procedures, plus Actuator health check verification.
+  4. **Jenkins SCM Job Execution & Verification:**
+     - Build #4 verified initial SCM pipeline logic.
+     - Build #6 exposed GString `resp` interpolation error and Windows cmd `copy` truncation.
+     - PR #5 cleanly resolved both issues.
+     - Build #7 executed with status **SUCCESS** (65s duration):
+       - Tests: 30/30 passed.
+       - WAR artifact: 58.2 MB binary copied to `E:\Downloads\apache-tomcat-10.1.61\webapps\mpr-platform.war`.
+       - Health check passed: HTTP 200 with Actuator health status `UP` (database `H2` validated, disk space healthy).
+       - Live application serving at `http://localhost:8084/mpr-platform/`.
 
 - **Files created or changed:**
   - `Jenkinsfile`
+  - `scripts/health-check.ps1`
   - `docs/server-deployment-guide.md`
   - `docs/jenkins-job-config.xml`
   - `docs/task-reports/task-08.md`
 
 - **Commands executed and actual outcomes:**
-  1. `git checkout -b feature/8-pipeline-server-deploy develop` -> Created feature branch.
-  2. `git add Jenkinsfile docs/server-deployment-guide.md ; git commit -m "feat(pipeline): author root Jenkinsfile and server deployment guide (Task 8)"` -> Commit `a492372`.
-  3. `git push -u origin feature/8-pipeline-server-deploy` -> Pushed to GitHub.
-  4. `gh pr create --base develop --head feature/8-pipeline-server-deploy ...` -> Created PR #4 (`https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/4`).
-  5. `gh pr merge 4 --merge` -> Merged PR #4 into `develop` (`7e34fae`).
-  6. `git checkout develop ; git pull origin develop ; git checkout main ; git merge develop ; git push origin main ; git checkout develop` -> Synced `develop` and `main`.
-  7. `curl.exe ... /job/Mobile-Plan-Recommendation-CI/config.xml` -> Updated job definition to SCM `Jenkinsfile`.
-  8. `curl.exe ... /job/Mobile-Plan-Recommendation-CI/build` -> Triggered Build #4.
-  9. `curl.exe ... /job/Mobile-Plan-Recommendation-CI/4/consoleText` -> Verified build log: all stages passed, Tomcat reported as pending.
-  10. `Invoke-RestMethod ... /job/Mobile-Plan-Recommendation-CI/4/testReport/api/json` -> `totalCount: 30`, `passCount: 30`, `failCount: 0`.
+  1. `git checkout -b feature/8-fix-deployment-health-check develop` -> Created bugfix branch.
+  2. Created `scripts/health-check.ps1` with native PowerShell `Invoke-RestMethod` polling.
+  3. Updated `Jenkinsfile` to use binary `Copy-Item` and `scripts/health-check.ps1`.
+  4. `git commit -m "fix(pipeline): resolve Groovy interpolation error in health check and use binary WAR copy"` -> Commit `94f3526`.
+  5. `git push -u origin feature/8-fix-deployment-health-check` -> Pushed to GitHub.
+  6. `gh pr create ...` -> Created PR #5 (`https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/5`).
+  7. `gh pr merge 5 --merge` -> Merged PR #5 into `develop` (`0871dfe`).
+  8. Triggered Jenkins Build #7 with parameters (`TOMCAT_HOME=E:\Downloads\apache-tomcat-10.1.61`, `APP_PORT=8084`, `DEPLOY_WAR=true`).
+  9. Jenkins Build #7 console verified: All 6 stages passed, health check confirmed `UP`, build status `SUCCESS`.
 
 - **Tests and results:**
-  - Jenkins Build #4 Pipeline Execution:
-    - Stage 'Checkout': SUCCESS
+  - Jenkins Build #7 Pipeline Execution:
+    - Stage 'Checkout': SUCCESS (Commit `0871dfe`)
     - Stage 'Environment & Port Validation': SUCCESS (Port 8084 validated, ports 8072, 8081, 8082 avoided)
     - Stage 'Compile and Test': SUCCESS (30 tests executed)
-    - Stage 'Package': SUCCESS (WAR generated)
+    - Stage 'Package': SUCCESS (58.2 MB WAR generated)
     - Stage 'Archive and Report': SUCCESS (JUnit XML parsed, WAR archived)
-    - Stage 'Deploy to Server': SUCCESS (Tomcat evaluated; pending status reported)
+    - Stage 'Deploy to Server': SUCCESS (WAR deployed to Tomcat 10.1, health check returned HTTP 200 `UP`)
   - **Total:** 30 tests executed, 30 passed, 0 failures, 0 skipped.
 
 - **Evidence captured (paths/URLs/screenshots/logs):**
   - Jenkins Job Overview: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`
-  - Jenkins Build #4 URL: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/4/`
-  - Jenkins Build #4 Test Report: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/4/testReport/`
-  - Archived Artifact on Disk: `C:\ProgramData\Jenkins\.jenkins\jobs\Mobile-Plan-Recommendation-CI\builds\4\archive\target\containerized-mobile-plan-recommendation-platform.war`
-  - GitHub Pull Request #4: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/4`
-  - Server Deployment Guide: `docs/server-deployment-guide.md`
-  - Root Pipeline as Code: `Jenkinsfile`
+  - Jenkins Build #7 URL: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/`
+  - Jenkins Build #7 Test Report: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/testReport/`
+  - Live Application URL: `http://localhost:8084/mpr-platform/`
+  - Live Health Endpoint: `http://localhost:8084/mpr-platform/actuator/health`
+  - Live Health Check Response: `{"status":"UP","components":{"db":{"status":"UP","details":{"database":"H2","validationQuery":"isValid()"}},"diskSpace":{"status":"UP","details":{"total":996927336448,"free":547192422400,"threshold":10485760,"path":"E:\\Downloads\\apache-tomcat-10.1.61\\bin\\.","exists":true}},"ping":{"status":"UP"}}}`
+  - Archived Artifact on Disk: `C:\ProgramData\Jenkins\.jenkins\jobs\Mobile-Plan-Recommendation-CI\builds\7\archive\target\containerized-mobile-plan-recommendation-platform.war`
+  - Deployed WAR on Tomcat: `E:\Downloads\apache-tomcat-10.1.61\webapps\mpr-platform.war` (58,208,477 bytes)
+  - GitHub Pull Request #5: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/5`
 
 - **Git branch / commit / tag / PR (if applicable):**
-  - Feature branch: `feature/8-pipeline-server-deploy`
-  - PR #4: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/4` (Merged)
-  - Integration commit: `7e34fae` on `develop` and `main`
-
-- **Manual steps still required:**
-  - Standalone Tomcat Deployment (Optional / Pending): When a local Tomcat instance is desired, follow `docs/server-deployment-guide.md` to install Tomcat 10.1 into `C:\apache-tomcat-10.1`, set HTTP port to `8084` in `conf/server.xml`, and run `startup.bat`. The pipeline will then deploy automatically to `webapps/mpr-platform.war` on the next build. Otherwise, proceed to Task 11 for Docker container deployment on port `8085`.
+  - Feature branch: `feature/8-fix-deployment-health-check`
+  - PR #5: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/5` (Merged)
+  - Integration commit: `0871dfe` on `develop`
 
 - **Known issues or risks:**
-  - None. Port allocation rules were strictly enforced, avoiding ports 8072, 8081, and 8082.
+  - None. Both SCM pipeline execution and standalone Tomcat server deployment are completely validated and operational.
 
 - **How to verify the result:**
-  1. Open browser to `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/4/`.
-  2. View the declarative pipeline stage view showing green badges across all stages.
-  3. Verify the console log shows port 8084 policy validation and successful test/package execution.
-  4. Inspect the archived WAR artifact and test results (30/30 passed).
-  5. Inspect the root `Jenkinsfile` and `docs/server-deployment-guide.md` in the repository.
+  1. Open browser to `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/`.
+  2. View the green pipeline stage view: Checkout $\rightarrow$ Validation $\rightarrow$ Compile & Test $\rightarrow$ Package $\rightarrow$ Archive & Report $\rightarrow$ Deploy to Server.
+  3. Verify console logs showing:
+     `[DEPLOYMENT SUCCESS] Application is UP and healthy on port 8084!`
+  4. Navigate to `http://localhost:8084/mpr-platform/` in browser to view the live catalogue with 24 plans.
+  5. Navigate to `http://localhost:8084/mpr-platform/actuator/health` to confirm `{"status":"UP"}`.
 
 - **Next task / handoff notes:**
-  - Proceed to Task 9: Selenium Test Design and Local Execution (designing automated UI tests with Selenium WebDriver for analyst plan creation and customer recommendations).
+  - Proceed to Task 9: Selenium Test Design and Local Execution.

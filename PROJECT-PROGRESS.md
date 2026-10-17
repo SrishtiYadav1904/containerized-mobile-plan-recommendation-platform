@@ -571,15 +571,17 @@ flowchart TD
      - Manager credentials setup in `conf/tomcat-users.xml`.
      - Automated and manual drop-in deployment procedures.
      - Post-deployment health verification instructions using `http://localhost:8084/mpr-platform/actuator/health`.
-  3. **Jenkins SCM Job Transition:**
+  3. **Jenkins SCM Job Transition & Verification:**
      - Updated Jenkins job `Mobile-Plan-Recommendation-CI` definition from inline script to `CpsScmFlowDefinition` pointing to `Jenkinsfile` on `develop`.
-  4. **Verified Pipeline Execution:**
-     - Executed Build #4 on Jenkins.
-     - All 6 stages completed successfully.
-     - Result: `SUCCESS` (Duration: ~59s).
-     - Test Result: 30/30 tests passed, 0 failures.
-     - Artifact archived: `containerized-mobile-plan-recommendation-platform.war`.
-     - Deployment stage: Evaluated Tomcat path, accurately reported `[DEPLOYMENT STATUS: PENDING - TOMCAT NOT DETECTED]`.
+     - **Build #4:** Verified initial SCM pipeline logic with 30 passing tests.
+     - **Build #6:** Diagnosed Groovy GString variable interpolation error (`MissingPropertyException: No such property: resp`) and Windows `cmd.exe copy` ASCII truncation (217 bytes).
+     - **Bugfix (PR #5):** Extracted deployment health check into `scripts/health-check.ps1` with native `Invoke-RestMethod` and exponential polling; implemented binary PowerShell `Copy-Item` deployment; set default `TOMCAT_HOME` to `E:\Downloads\apache-tomcat-10.1.61` with auto-fallback.
+     - **Build #7:** Executed with status **SUCCESS** (65s duration):
+       - All 6 stages completed successfully.
+       - Test Result: 30/30 tests passed, 0 failures.
+       - Binary WAR artifact (58.2 MB) deployed to `E:\Downloads\apache-tomcat-10.1.61\webapps\mpr-platform.war`.
+       - Health check verified: Live Actuator probe returned HTTP 200 with `{"status":"UP"}`.
+       - Application serving live traffic at `http://localhost:8084/mpr-platform/`.
 - **Why It Matters:** Version-controlling pipeline definitions alongside application code ensures pipeline modifications are code-reviewed, traceable via Git history, testable in branches, and reproducible across multiple CI/CD agents.
 - **How It Works:**
   - Developers commit changes including pipeline edits to Git.
@@ -594,46 +596,57 @@ flowchart TD
   - `docs/task-reports/task-08.md`: Official Task 8 milestone report.
 - **Commands Executed:**
   ```powershell
-  # Feature branch workflow
+  # Feature branch workflow & initial implementation
   git checkout -b feature/8-pipeline-server-deploy develop
   git add Jenkinsfile docs/server-deployment-guide.md
   git commit -m "feat(pipeline): author root Jenkinsfile and server deployment guide (Task 8)"
   git push -u origin feature/8-pipeline-server-deploy
   gh pr create --base develop --head feature/8-pipeline-server-deploy ...
   gh pr merge 4 --merge
-  git checkout develop ; git pull origin develop
-  git checkout main ; git merge develop ; git push origin main
-  # Trigger and inspect Jenkins build
-  curl.exe -b cookies.txt -X POST "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/build" -H "Jenkins-Crumb: <crumb>"
-  curl.exe -s "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/4/consoleText"
-  Invoke-RestMethod -Uri "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/4/api/json"
+  
+  # Bugfix workflow for deployment health-check (Build #6 -> Build #7)
+  git checkout -b feature/8-fix-deployment-health-check develop
+  git add Jenkinsfile scripts/health-check.ps1 docs/server-deployment-guide.md
+  git commit -m "fix(pipeline): resolve Groovy interpolation error in health check and use binary WAR copy"
+  git push -u origin feature/8-fix-deployment-health-check
+  gh pr create --base develop --head feature/8-fix-deployment-health-check ...
+  gh pr merge 5 --merge
+  
+  # Trigger and verify Jenkins Build #7
+  Invoke-RestMethod -Uri "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/buildWithParameters?TOMCAT_HOME=E:%5CDownloads%5Capache-tomcat-10.1.61&APP_PORT=8084&DEPLOY_WAR=true&DEPLOY_ENV=local-tomcat" -Method Post ...
+  Invoke-RestMethod -Uri "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/api/json"
+  Invoke-RestMethod -Uri "http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/testReport/api/json"
   ```
 - **Testing and Verification:**
-  - Jenkins Build #4 Pipeline Execution:
+  - Jenkins Build #7 Pipeline Execution:
     - Stage 'Checkout': SUCCESS
     - Stage 'Environment & Port Validation': SUCCESS (Port 8084 validated, ports 8072, 8081, 8082 avoided)
     - Stage 'Compile and Test': SUCCESS (30 tests executed)
-    - Stage 'Package': SUCCESS (WAR generated)
+    - Stage 'Package': SUCCESS (58.2 MB WAR generated)
     - Stage 'Archive and Report': SUCCESS (JUnit XML parsed, WAR archived)
-    - Stage 'Deploy to Server': SUCCESS (Tomcat evaluated; pending status reported)
+    - Stage 'Deploy to Server': SUCCESS (WAR deployed to Tomcat 10.1, health check returned HTTP 200 `UP`)
   - **Total:** 30 tests executed, 30 passed, 0 failures, 0 skipped.
+  - Live Health Check: `{"status":"UP","components":{"db":{"status":"UP"},"diskSpace":{"status":"UP"},"ping":{"status":"UP"}}}` on `http://localhost:8084/mpr-platform/actuator/health`.
 - **Git Activity:**
-  - Feature Branch: `feature/8-pipeline-server-deploy`
-  - Pull Request: [PR #4](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/4) (Merged into `develop`)
-  - Integration Commit: `7e34fae` on `develop` and `main`
+  - Feature Branches: `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`
+  - Pull Requests: [PR #4](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/4), [PR #5](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/5) (Both merged into `develop`)
+  - Integration Commits: `7e34fae`, `0871dfe` on `develop`
 - **Evidence:**
   - Task Report: [docs/task-reports/task-08.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-08.md)
   - Jenkins Job: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`
-  - Jenkins Build #4: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/4/`
-  - GitHub PR #4: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/4`
+  - Jenkins Build #7: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/`
+  - Live Application: `http://localhost:8084/mpr-platform/`
+  - Live Actuator Health: `http://localhost:8084/mpr-platform/actuator/health`
+  - GitHub PR #5: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/5`
   - Root Pipeline as Code: [Jenkinsfile](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/Jenkinsfile)
+  - Health Check Script: [scripts/health-check.ps1](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/scripts/health-check.ps1)
   - Server Deployment Guide: [docs/server-deployment-guide.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/server-deployment-guide.md)
 - **Problems Encountered:**
-  - *Problem:* Standalone Apache Tomcat 10.1 is not pre-installed on the host operating system.  
-    *Root Cause:* The developer workstation environment has Jenkins installed but does not have standalone Tomcat 10.1 provisioned yet.  
-    *Resolution:* Implemented conditional deployment logic in `Jenkinsfile` that checks for Tomcat at `params.TOMCAT_HOME`, accurately logs `[DEPLOYMENT STATUS: PENDING - TOMCAT NOT DETECTED]`, and documents exact manual setup steps in `docs/server-deployment-guide.md`, strictly following the task instructions without faking a successful Tomcat run.
-- **Remaining Work:** None. Pipeline as Code is verified on Jenkins and running from SCM.
-- **Completion Status:** **Completed** (Verified on Jenkins controller).
+  - *Problem 1:* Jenkins Build #6 failed with `groovy.lang.MissingPropertyException: No such property: resp for class: groovy.lang.Binding` at `WorkflowScript:133`.  
+    *Root Cause:* In Groovy triple double-quoted GStrings (`"""..."""`), `\\$resp` was parsed as an escaped backslash followed by an unescaped variable `$resp`, causing Groovy's runtime binding evaluator to fail. Additionally, Windows `cmd.exe copy /Y target\*.war destination` without `/B` treated the binary WAR as ASCII text, truncating it at byte 26 (`0x1A`) and copying only 217 bytes instead of the full 58 MB.  
+    *Resolution:* Extracted the health verification logic into a dedicated PowerShell script `scripts/health-check.ps1` utilizing native `Invoke-RestMethod` and exponential polling. Replaced `copy` with PowerShell `Copy-Item -Force` to guarantee the full 58 MB binary WAR is deployed. Set default `TOMCAT_HOME` to `E:\Downloads\apache-tomcat-10.1.61` with auto-fallback. Merged PR #5 and executed Build #7, achieving full **SUCCESS** with live Actuator verification.
+- **Remaining Work:** None. Pipeline as Code and live Tomcat deployment are verified on Jenkins.
+- **Completion Status:** **Completed** (Verified on Jenkins controller & live Tomcat 10.1 server).
 - **Viva Preparation:**
   - *Q1: What is "Pipeline as Code" and why is it preferred over UI-configured jobs?*  
     *Answer:* Pipeline as Code means defining deployment pipelines in a text file (such as a `Jenkinsfile`) stored directly in the application source code repository. It enables code reviews for pipeline changes, version control history, branch-specific pipelines, and instant disaster recovery of CI/CD configuration.
@@ -732,20 +745,20 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `develop` (clean working tree, merged PR #4, synced with `main`) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Active Local Branch** | `develop` (clean working tree, merged PR #5, synced with `main`) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
-| **Latest Commit SHA** | `7e34fae` (`Merge pull request #4 from feature/8-pipeline-server-deploy`) | `git log -n 1 --oneline` |
+| **Latest Commit SHA** | `0871dfe` (`Merge pull request #5 from feature/8-fix-deployment-health-check`) | `git log -n 1 --oneline` |
 | **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
-| **Test Suite Results** | 30 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]). All 30 tests published and verified in Jenkins JUnit reporting. | Jenkins Test Report (`http://localhost:8080/job/Mobile-Plan-Recommendation-CI/4/testReport/`) |
-| **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Build #4 executed with status `SUCCESS` (30/30 tests passed, WAR archived, Tomcat deployment evaluated/pending). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
-| **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB) | Jenkins Build #4 Archive on disk |
-| **Server Deployment Status** | Declarative pipeline deployment stage implemented in `Jenkinsfile`. Standalone Tomcat 10.1 is not installed on host machine; pipeline evaluates `TOMCAT_HOME`, logs `[DEPLOYMENT STATUS: PENDING - TOMCAT NOT DETECTED]`, and links to `docs/server-deployment-guide.md` without failing pipeline. | `docs/server-deployment-guide.md` & `Jenkinsfile` |
+| **Test Suite Results** | 30 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]). All 30 tests published and verified in Jenkins JUnit reporting. | Jenkins Test Report (`http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/testReport/`) |
+| **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Build #7 executed with status `SUCCESS` (30/30 tests passed, WAR archived, WAR deployed to Tomcat 10.1 on port 8084, live Actuator health confirmed `UP`). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
+| **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB) | Jenkins Build #7 Archive on disk |
+| **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}`. | `http://localhost:8084/mpr-platform/actuator/health` |
 | **Docker Status** | Not started (Planned for Tasks 11 & 12). | N/A |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
-| **Verified Working Ports** | Jenkins Controller: `8080`. Planned Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
-| **Known Blockers** | None. Tasks 1–8 complete, tested, and published. | `TASK-TRACKER.md` |
+| **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
+| **Known Blockers** | None. Tasks 1–8 complete, tested, deployed, and published. | `TASK-TRACKER.md` |
 
 ---
 
