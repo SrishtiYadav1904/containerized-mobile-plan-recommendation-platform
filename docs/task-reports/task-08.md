@@ -69,7 +69,25 @@
     - Stage 'Package': SUCCESS (58.2 MB WAR generated)
     - Stage 'Archive and Report': SUCCESS (JUnit XML parsed, WAR archived)
     - Stage 'Deploy to Server': SUCCESS (WAR deployed to Tomcat 10.1, health check returned HTTP 200 `UP`)
-  - **Total:** 30 tests executed, 30 passed, 0 failures, 0 skipped.
+  - **Unit & Integration Tests:** 30 tests executed, 30 passed, 0 failures, 0 skipped.
+  - **Live Deployed Application Functional Verification (`http://localhost:8084/mpr-platform/`):**
+    - Main pages load:
+      - `GET /mpr-platform/`: HTTP 200 OK (3,757 bytes)
+      - `GET /mpr-platform/plans`: HTTP 200 OK (35,724 bytes)
+      - `GET /mpr-platform/recommendations`: HTTP 200 OK (4,175 bytes)
+      - `GET /mpr-platform/login`: HTTP 200 OK (3,214 bytes)
+    - Plan Catalogue & Filters:
+      - REST API `GET /mpr-platform/api/plans`: Returns 18 published plans.
+      - Operator filter `GET /mpr-platform/plans?operator=Jio`: HTTP 200 OK.
+      - Budget filter `GET /mpr-platform/plans?maxPrice=300`: HTTP 200 OK.
+    - Recommendation Engine:
+      - `POST /mpr-platform/recommendations` (data=45GB, minutes=500, budget=500, preferences=5G): HTTP 200 OK, returns top 12 ranked plans matching 4-factor scoring model.
+    - Authentication & Role-Based Access Control (RBAC):
+      - `customer@example.com` (`CUSTOMER`): Accesses catalogue `/plans` (HTTP 200); forbidden on `/plans/new` (HTTP 403) and `/dashboard` (HTTP 403).
+      - `analyst@example.com` (`ANALYST`): Accesses `/plans/new` (HTTP 200); successfully posts new plan `Jio DevOps Special 5G 30D` in DRAFT status.
+      - `admin@example.com` (`ADMINISTRATOR`): Accesses `/dashboard` (HTTP 200) and `/api/dashboard/summary` (HTTP 200).
+    - Role-Based Data Isolation:
+      - DRAFT plans are visible to Analysts but automatically hidden from Customers on `/plans`.
 
 - **Evidence captured (paths/URLs/screenshots/logs):**
   - Jenkins Job Overview: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`
