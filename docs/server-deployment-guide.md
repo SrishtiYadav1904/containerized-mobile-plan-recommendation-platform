@@ -31,7 +31,7 @@ flowchart TD
 ### Pipeline Parameters:
 - `DEPLOY_ENV`: Deployment target (`local-tomcat`, `staging`, `production`).
 - `APP_PORT`: Application port (Defaults to `8084`; guarded against forbidden ports `8072, 8081, 8082`).
-- `TOMCAT_HOME`: Directory path where Apache Tomcat 10.1 is installed (Defaults to `C:\apache-tomcat-10.1`).
+- `TOMCAT_HOME`: Directory path where Apache Tomcat 10.1 is installed (Defaults to `E:\Downloads\apache-tomcat-10.1.61` with auto-fallback to `C:\apache-tomcat-10.1`).
 - `DEPLOY_WAR`: Boolean toggle to execute server deployment stage.
 
 ---
