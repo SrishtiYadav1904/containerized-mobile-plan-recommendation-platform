@@ -14,7 +14,7 @@ pipeline {
         )
         string(
             name: 'TOMCAT_HOME',
-            defaultValue: 'C:\\apache-tomcat-10.1',
+            defaultValue: 'E:\\Downloads\\apache-tomcat-10.1.61',
             description: 'Filesystem path to Apache Tomcat 10.1 installation'
         )
         booleanParam(
@@ -120,18 +120,38 @@ pipeline {
                 echo '=== Stage 6: Server Deployment & Health Verification ==='
                 script {
                     def tomcatPath = params.TOMCAT_HOME
+                    if (!fileExists("${tomcatPath}\\bin\\catalina.bat") && !fileExists("${tomcatPath}\\webapps")) {
+                        if (fileExists("E:\\Downloads\\apache-tomcat-10.1.61\\bin\\catalina.bat")) {
+                            tomcatPath = "E:\\Downloads\\apache-tomcat-10.1.61"
+                        } else if (fileExists("C:\\apache-tomcat-10.1\\bin\\catalina.bat")) {
+                            tomcatPath = "C:\\apache-tomcat-10.1"
+                        }
+                    }
+
                     def tomcatExists = fileExists("${tomcatPath}\\bin\\catalina.bat") || fileExists("${tomcatPath}\\webapps")
 
                     if (tomcatExists) {
                         echo "[DEPLOYMENT] Standalone Tomcat 10.1 detected at: ${tomcatPath}"
-                        echo "[DEPLOYMENT] Deploying WAR to ${tomcatPath}\\webapps\\mpr-platform.war"
+                        echo "[DEPLOYMENT] Deploying binary WAR artifact to ${tomcatPath}\\webapps\\mpr-platform.war"
+                        
+                        // Use binary PowerShell Copy-Item to prevent cmd.exe ASCII truncation
                         bat """
-                            copy /Y target\\*.war "${tomcatPath}\\webapps\\mpr-platform.war"
+                            powershell -ExecutionPolicy Bypass -Command "Copy-Item -Path 'target/containerized-mobile-plan-recommendation-platform.war' -Destination '${tomcatPath}/webapps/mpr-platform.war' -Force"
                         """
-                        echo "[HEALTH PROBE] Verifying application health endpoint on port ${params.APP_PORT}..."
-                        bat """
-                            powershell -Command "try { \\$resp = Invoke-RestMethod -Uri 'http://localhost:${params.APP_PORT}/mpr-platform/actuator/health' -TimeoutSec 10; Write-Host '[HEALTH PROBE RESULT]:' (\\$resp | ConvertTo-Json) } catch { Write-Host '[WARN] Tomcat not currently running or health probe timed out.' }"
-                        """
+                        
+                        echo "[DEPLOYMENT] WAR successfully copied. Initiating health check verification..."
+                        
+                        // Execute robust health check script with retries and diagnostics
+                        def checkStatus = bat(
+                            script: """powershell -ExecutionPolicy Bypass -File scripts/health-check.ps1 -Port ${params.APP_PORT} -ContextPath mpr-platform -TimeoutSeconds 60 -RetryIntervalSeconds 3""",
+                            returnStatus: true
+                        )
+
+                        if (checkStatus != 0) {
+                            error("[DEPLOYMENT FAILED] Application at http://localhost:${params.APP_PORT}/mpr-platform/ failed health check verification. See logs above for details.")
+                        }
+
+                        echo "[DEPLOYMENT SUCCESS] Verification complete: Application is UP, healthy, and serving requests on http://localhost:${params.APP_PORT}/mpr-platform/"
                     } else {
                         echo "=========================================================================="
                         echo "[DEPLOYMENT STATUS: PENDING - TOMCAT NOT DETECTED]"
