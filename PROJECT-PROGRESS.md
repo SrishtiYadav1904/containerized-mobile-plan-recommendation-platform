@@ -456,9 +456,9 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `feature/5-create-view-plans` (clean working tree after commit) | `git status` |
+| **Active Local Branch** | `develop` (clean working tree, merged PR #1) | `git status` |
 | **Active Remote Branches** | `main`, `develop`, and `feature/5-create-view-plans` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
-| **Latest Commit SHA** | (Recorded upon Task 5 commit) | `git log -n 1 --oneline` |
+| **Latest Commit SHA** | `07437a2` (`Merge pull request #1 from feature/5-create-view-plans`) | `git log -n 1 --oneline` |
 | **Working Application Features** | Plan entity with 8 attributes, Plan catalogue list view with status badges, Plan detail view with audit info, Analyst plan creation form (`DRAFT` enforcement), role-based visibility filtering (`CUSTOMER` sees only `PUBLISHED`, `ANALYST`/`ADMINISTRATOR` sees all), REST APIs (`/api/plans`), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan seeding active. | `src/main/resources/application.properties` |
 | **Test Suite Results** | 12 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest`, `PlanControllerTest`, `MobilePlanRecommendationApplicationTests`). | Maven Surefire Test Report (`target/surefire-reports/`) |
