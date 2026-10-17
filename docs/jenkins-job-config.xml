@@ -3,7 +3,7 @@
   <actions>
     <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2291.v2934911987b_6"/>
   </actions>
-  <description>Continuous Integration job for Containerized Mobile Plan Recommendation Platform (Srishti Yadav / Task 7)</description>
+  <description>Continuous Integration &amp; Deployment Pipeline for Containerized Mobile Plan Recommendation Platform (Srishti Yadav / Task 8)</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <jenkins.model.BuildDiscarderProperty>
@@ -24,73 +24,25 @@
       </triggers>
     </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
   </properties>
-  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@4362.v9b_991749898e">
-    <script>pipeline {
-    agent any
-    
-    triggers {
-        pollSCM('H/15 * * * *')
-    }
-    
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timestamps()
-        timeout(time: 15, unit: 'MINUTES')
-    }
-    
-    stages {
-        stage('Checkout') {
-            steps {
-                echo 'Checking out develop branch from repository...'
-                git branch: 'develop', url: 'https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform.git'
-            }
-        }
-        
-        stage('Compile and Test') {
-            steps {
-                echo 'Compiling source code and executing unit/integration tests...'
-                bat '''
-                    if exist mvnw.cmd (
-                        call mvnw.cmd -B clean test
-                    ) else (
-                        call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B clean test
-                    )
-                '''
-            }
-        }
-        
-        stage('Package') {
-            steps {
-                echo 'Packaging application artifact...'
-                bat '''
-                    if exist mvnw.cmd (
-                        call mvnw.cmd -B package -DskipTests
-                    ) else (
-                        call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B package -DskipTests
-                    )
-                '''
-            }
-        }
-    }
-    
-    post {
-        always {
-            junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-            archiveArtifacts allowEmptyArchive: true, artifacts: 'target/*.war,target/*.jar', fingerprint: true
-        }
-        success {
-            echo '========================================================'
-            echo 'CI Pipeline completed successfully! Artifacts archived.'
-            echo '========================================================'
-        }
-        failure {
-            echo '========================================================'
-            echo 'CI Pipeline failed. Please inspect logs.'
-            echo '========================================================'
-        }
-    }
-}</script>
-    <sandbox>true</sandbox>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@4362.v9b_991749898e">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@5.10.1">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform.git</url>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/develop</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="empty-list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
   </definition>
   <triggers/>
   <disabled>false</disabled>
