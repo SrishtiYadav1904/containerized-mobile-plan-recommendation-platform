@@ -1,0 +1,142 @@
+:root {
+  --bg-primary: #FAF8FC;
+  --bg-surface: #FFFFFF;
+  --text-main: #2D2738;
+  --text-muted: #6C627A;
+  --accent-pink: #E86A92;
+  --accent-pink-soft: #FDE8EF;
+  --accent-lilac: #8E7CC3;
+  --accent-lilac-soft: #F0EDF9;
+  --border-subtle: #E8E2EE;
+  --shadow-sm: 0 2px 6px rgba(110, 80, 140, 0.06);
+  --shadow-md: 0 8px 24px rgba(110, 80, 140, 0.08);
+  --radius-md: 12px;
+  --radius-lg: 18px;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+.brand-header {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 1rem 2rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent-lilac);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge-lilac {
+  background-color: var(--accent-lilac-soft);
+  color: var(--accent-lilac);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.hero-section {
+  max-width: 900px;
+  margin: 3rem auto;
+  padding: 2.5rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.hero-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 650px;
+  margin: 0 auto 2rem auto;
+}
+
+.btn-primary-mpr {
+  background-color: var(--accent-pink);
+  color: #FFFFFF;
+  border: none;
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-primary-mpr:hover {
+  background-color: #D6527B;
+  transform: translateY(-1px);
+  color: #FFFFFF;
+}
+
+.btn-secondary-mpr {
+  background-color: var(--accent-lilac-soft);
+  color: var(--accent-lilac);
+  border: 1px solid var(--accent-lilac);
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+  margin-left: 0.75rem;
+}
+
+.btn-secondary-mpr:hover {
+  background-color: var(--accent-lilac);
+  color: #FFFFFF;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  text-align: left;
+}
+
+.feature-card {
+  padding: 1.5rem;
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.feature-card h3 {
+  font-size: 1.1rem;
+  margin-top: 0;
+  color: var(--accent-pink);
+}
+
+.feature-card p {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}

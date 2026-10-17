@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Plan Recommendation Platform</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" href="/css/styles.css">
+</head>
+<body>
+    <header class="brand-header">
+        <div class="brand-title">
+            <span>📱</span> Mobile Plan Recommendation Platform
+        </div>
+        <span class="badge-lilac">DevOps Platform v1.0-SNAPSHOT</span>
+    </header>
+
+    <main class="hero-section">
+        <h1 class="hero-title">Compare & Discover the Best Mobile Plans</h1>
+        <p class="hero-subtitle">
+            An automated, containerized platform delivering transparent, rule-based recommendations tailored to your data, calling, and budget requirements.
+        </p>
+
+        <div>
+            <a href="/actuator/health" class="btn-primary-mpr">System Health Check</a>
+            <a href="https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform" class="btn-secondary-mpr">Repository Docs</a>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Customer Access</h3>
+                <p>Browse published tariffs, filter by budget and validity, and receive ranked plan matches.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Analyst Workflow</h3>
+                <p>Maintain accurate catalogue records, manage data fields, and submit plans for review.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Admin Governance</h3>
+                <p>Review, publish, and archive plans with strict audit trails and role-based permissions.</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

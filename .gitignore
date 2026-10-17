@@ -1,0 +1,49 @@
+# Target and Build Artifacts
+target/
+*.war
+*.jar
+*.class
+
+# Log files
+*.log
+logs/
+
+# Maven
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE specific files
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.vscode/
+*.code-workspace
+.project
+.classpath
+.settings/
+
+# OS specific files
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+ehthumbs.db
+.DS_Store
+
+# Temporary & Scratch files
+*.tmp
+*.bak
+*.swp
+*~
+tasks_1_to_3_extracted.txt
+
+# Secrets & Environment configs (Strictly forbidden in version control)
+.env
+.env.*
+application-local.properties
+application-secrets.properties
+*.pem
+*.key
+*.p12
+*.jks
