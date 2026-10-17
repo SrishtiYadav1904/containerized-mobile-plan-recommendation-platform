@@ -18,6 +18,15 @@
     </header>
 
     <main class="container">
+        <!-- Success Alert -->
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">
+            Status changed successfully.
+        </div>
+        <!-- Error Alert -->
+        <div th:if="${errorMessage}" class="alert form-error" style="background: #FEE2E2; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;" th:text="${errorMessage}">
+            Invalid transition error.
+        </div>
+
         <div class="detail-card">
             <div class="page-header" style="margin-bottom: 1.5rem;">
                 <div>
@@ -67,15 +76,47 @@
                     <td>
                         Created by: <strong th:text="${plan.createdBy != null ? plan.createdBy : 'System'}">analyst</strong>
                         <span th:if="${plan.createdAt != null}" th:text="' on ' + ${#temporals.format(plan.createdAt, 'dd MMM yyyy HH:mm')}"></span>
+                        <div th:if="${plan.updatedBy != null}" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            Last updated by: <strong th:text="${plan.updatedBy}">analyst</strong>
+                            <span th:if="${plan.updatedAt != null}" th:text="' on ' + ${#temporals.format(plan.updatedAt, 'dd MMM yyyy HH:mm')}"></span>
+                        </div>
                     </td>
                 </tr>
             </table>
 
-            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+            <!-- Role-controlled Workflow Actions -->
+            <div th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}"
+                 style="background: var(--bg-primary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin: 1.5rem 0;">
+                <h4 style="margin: 0 0 0.75rem 0; color: var(--text-main); font-size: 0.95rem;">Lifecycle Governance Actions:</h4>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <!-- DRAFT -> IN_REVIEW (Analyst or Admin) -->
+                    <form th:if="${plan.status == T(com.mpr.platform.model.PlanStatus).DRAFT}"
+                          th:action="@{/plans/{id}/status(id=${plan.id})}" method="post">
+                        <input type="hidden" name="targetStatus" value="IN_REVIEW">
+                        <button type="submit" class="btn-primary-mpr btn-sm">📤 Submit for Review (IN_REVIEW)</button>
+                    </form>
+
+                    <!-- IN_REVIEW -> PUBLISHED (Admin only) -->
+                    <form th:if="${plan.status == T(com.mpr.platform.model.PlanStatus).IN_REVIEW and currentRole == 'ADMINISTRATOR'}"
+                          th:action="@{/plans/{id}/status(id=${plan.id})}" method="post">
+                        <input type="hidden" name="targetStatus" value="PUBLISHED">
+                        <button type="submit" class="btn-primary-mpr btn-sm" style="background-color: #059669;">✅ Approve & Publish</button>
+                    </form>
+
+                    <!-- PUBLISHED -> ARCHIVED (Admin only) -->
+                    <form th:if="${plan.status == T(com.mpr.platform.model.PlanStatus).PUBLISHED and currentRole == 'ADMINISTRATOR'}"
+                          th:action="@{/plans/{id}/status(id=${plan.id})}" method="post">
+                        <input type="hidden" name="targetStatus" value="ARCHIVED">
+                        <button type="submit" class="btn-secondary-mpr btn-sm" style="color: #DC2626; border-color: #DC2626;">📦 Archive Plan</button>
+                    </form>
+
+                    <!-- Edit Plan Link -->
+                    <a th:href="@{/plans/{id}/edit(id=${plan.id})}" class="btn-secondary-mpr btn-sm">✏️ Edit Details</a>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
                 <a th:href="@{/plans}" class="btn-secondary-mpr">← Back to Catalogue</a>
-                <span th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
-                    <a th:href="@{/plans/new}" class="btn-primary-mpr">+ Create Another Plan</a>
-                </span>
             </div>
         </div>
     </main>

@@ -13,8 +13,10 @@
         </a>
         <div class="nav-links">
             <a th:href="@{/plans}" class="nav-link">Browse Plans</a>
-            <a th:href="@{/plans/new}" class="btn-primary-mpr btn-sm">+ Create Plan</a>
-            <a th:href="@{/actuator/health}" class="btn-secondary-mpr btn-sm">Health</a>
+            <a th:href="@{/recommendations}" class="nav-link">Recommendations</a>
+            <a th:href="@{/dashboard}" class="nav-link">Dashboard</a>
+            <a th:href="@{/login}" class="btn-secondary-mpr btn-sm">Sign In</a>
+            <a th:href="@{/register}" class="btn-primary-mpr btn-sm">Register</a>
         </div>
     </header>
 
@@ -25,8 +27,9 @@
         </p>
 
         <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-            <a th:href="@{/plans}" class="btn-primary-mpr">Browse Mobile Tariffs</a>
-            <a th:href="@{/plans/new}" class="btn-secondary-mpr">Analyst: Add Plan Draft</a>
+            <a th:href="@{/recommendations}" class="btn-primary-mpr">🎯 Personalized Plan Finder</a>
+            <a th:href="@{/plans}" class="btn-secondary-mpr">📋 Browse Full Catalogue</a>
+            <a th:href="@{/dashboard}" class="btn-secondary-mpr">📊 View Dashboard</a>
         </div>
 
         <div class="feature-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 2.5rem; text-align: left;">

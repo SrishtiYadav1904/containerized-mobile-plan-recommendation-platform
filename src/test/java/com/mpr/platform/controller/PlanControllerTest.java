@@ -11,8 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -33,7 +32,16 @@ class PlanControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "analyst", roles = {"ANALYST"})
+    @DisplayName("GET /plans with search filter returns filtered list")
+    void testSearchPlansByOperator() throws Exception {
+        mockMvc.perform(get("/plans").param("operator", "Jio"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("plans/list"))
+                .andExpect(model().attributeExists("plans"));
+    }
+
+    @Test
+    @WithMockUser(username = "analyst@example.com", roles = {"ANALYST"})
     @DisplayName("GET /plans/new as ANALYST returns HTTP 200 and loads create form")
     void testGetCreateFormAsAnalyst() throws Exception {
         mockMvc.perform(get("/plans/new"))
@@ -51,7 +59,7 @@ class PlanControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "customer", roles = {"CUSTOMER"})
+    @WithMockUser(username = "customer@example.com", roles = {"CUSTOMER"})
     @DisplayName("GET /plans/new as CUSTOMER returns HTTP 403 Forbidden")
     void testGetCreateFormAsCustomerReturnsForbidden() throws Exception {
         mockMvc.perform(get("/plans/new"))
@@ -59,7 +67,7 @@ class PlanControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "analyst", roles = {"ANALYST"})
+    @WithMockUser(username = "analyst@example.com", roles = {"ANALYST"})
     @DisplayName("POST /plans as ANALYST with valid fields creates plan and redirects to /plans")
     void testCreatePlanAsAnalyst() throws Exception {
         mockMvc.perform(post("/plans")
@@ -78,11 +86,62 @@ class PlanControllerTest {
     }
 
     @Test
+    @DisplayName("GET /recommendations displays the recommendation input form")
+    void testGetRecommendationsForm() throws Exception {
+        mockMvc.perform(get("/recommendations"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("recommendations/form"))
+                .andExpect(model().attributeExists("request"));
+    }
+
+    @Test
+    @DisplayName("POST /recommendations computes ranked plans and renders results view")
+    void testProcessRecommendations() throws Exception {
+        mockMvc.perform(post("/recommendations")
+                        .with(csrf())
+                        .param("monthlyDataGb", "30.0")
+                        .param("monthlyMinutes", "300")
+                        .param("budget", "500.0")
+                        .param("preferences", "5G, Disney+ Hotstar"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("recommendations/results"))
+                .andExpect(model().attributeExists("results"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = {"ADMINISTRATOR"})
+    @DisplayName("GET /dashboard as ADMINISTRATOR returns HTTP 200 and summary metrics")
+    void testGetDashboardAsAdmin() throws Exception {
+        mockMvc.perform(get("/dashboard"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("dashboard/summary"))
+                .andExpect(model().attributeExists("statusCounts", "operatorCounts", "avgPrice"));
+    }
+
+    @Test
+    @WithMockUser(username = "customer@example.com", roles = {"CUSTOMER"})
+    @DisplayName("GET /dashboard as CUSTOMER returns HTTP 403 Forbidden")
+    void testGetDashboardAsCustomerForbidden() throws Exception {
+        mockMvc.perform(get("/dashboard"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("GET /api/plans returns HTTP 200 and JSON array")
     void testGetApiPlans() throws Exception {
         mockMvc.perform(get("/api/plans")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", notNullValue()));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = {"ADMINISTRATOR"})
+    @DisplayName("GET /api/dashboard/summary as ADMINISTRATOR returns HTTP 200 and JSON metrics")
+    void testGetApiDashboardSummary() throws Exception {
+        mockMvc.perform(get("/api/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCounts", notNullValue()))
+                .andExpect(jsonPath("$.operatorCounts", notNullValue()));
     }
 }

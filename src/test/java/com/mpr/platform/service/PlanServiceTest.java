@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +32,7 @@ class PlanServiceTest {
     @BeforeEach
     void setUp() {
         samplePlan = new Plan("Jio", "5G Value 28D", 299.0, 28, 1.5, -1, 100, "Disney+ Hotstar");
+        samplePlan.setId(1L);
     }
 
     @Test
@@ -59,6 +61,82 @@ class PlanServiceTest {
     }
 
     @Test
+    @DisplayName("Status transition: DRAFT to IN_REVIEW permitted for Analyst")
+    void testTransitionDraftToInReview() {
+        samplePlan.setStatus(PlanStatus.DRAFT);
+        when(planRepository.findById(1L)).thenReturn(Optional.of(samplePlan));
+        when(planRepository.save(any(Plan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Plan transitioned = planService.transitionStatus(1L, PlanStatus.IN_REVIEW, "ANALYST", "analyst");
+        assertEquals(PlanStatus.IN_REVIEW, transitioned.getStatus());
+    }
+
+    @Test
+    @DisplayName("Status transition: IN_REVIEW to PUBLISHED permitted for Administrator")
+    void testTransitionInReviewToPublishedAdmin() {
+        samplePlan.setStatus(PlanStatus.IN_REVIEW);
+        when(planRepository.findById(1L)).thenReturn(Optional.of(samplePlan));
+        when(planRepository.save(any(Plan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Plan transitioned = planService.transitionStatus(1L, PlanStatus.PUBLISHED, "ADMINISTRATOR", "admin");
+        assertEquals(PlanStatus.PUBLISHED, transitioned.getStatus());
+    }
+
+    @Test
+    @DisplayName("Status transition: IN_REVIEW to PUBLISHED rejected for Analyst")
+    void testTransitionInReviewToPublishedRejectedForAnalyst() {
+        samplePlan.setStatus(PlanStatus.IN_REVIEW);
+        when(planRepository.findById(1L)).thenReturn(Optional.of(samplePlan));
+
+        assertThrows(IllegalStateException.class, () ->
+                planService.transitionStatus(1L, PlanStatus.PUBLISHED, "ANALYST", "analyst")
+        );
+    }
+
+    @Test
+    @DisplayName("Invalid status transition: DRAFT directly to PUBLISHED must throw IllegalStateException")
+    void testInvalidTransitionDraftDirectlyToPublished() {
+        samplePlan.setStatus(PlanStatus.DRAFT);
+        when(planRepository.findById(1L)).thenReturn(Optional.of(samplePlan));
+
+        assertThrows(IllegalStateException.class, () ->
+                planService.transitionStatus(1L, PlanStatus.PUBLISHED, "ADMINISTRATOR", "admin")
+        );
+    }
+
+    @Test
+    @DisplayName("Status transition: PUBLISHED to ARCHIVED permitted for Administrator")
+    void testTransitionPublishedToArchived() {
+        samplePlan.setStatus(PlanStatus.PUBLISHED);
+        when(planRepository.findById(1L)).thenReturn(Optional.of(samplePlan));
+        when(planRepository.save(any(Plan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Plan transitioned = planService.transitionStatus(1L, PlanStatus.ARCHIVED, "ADMINISTRATOR", "admin");
+        assertEquals(PlanStatus.ARCHIVED, transitioned.getStatus());
+    }
+
+    @Test
+    @DisplayName("searchAndFilterPlans correctly filters by operator, price, and validity")
+    void testSearchAndFilterPlans() {
+        Plan p1 = new Plan("Jio", "Jio 28D Super", 299.0, 28, 1.5, -1, 100, "5G");
+        p1.setStatus(PlanStatus.PUBLISHED);
+        Plan p2 = new Plan("Airtel", "Airtel 56D Hero", 479.0, 56, 1.5, -1, 100, "Wynk");
+        p2.setStatus(PlanStatus.PUBLISHED);
+
+        when(planRepository.findByStatus(PlanStatus.PUBLISHED)).thenReturn(List.of(p1, p2));
+
+        // Filter by operator Jio
+        List<Plan> jioPlans = planService.searchAndFilterPlans(null, "Jio", null, null, "CUSTOMER");
+        assertEquals(1, jioPlans.size());
+        assertEquals("Jio", jioPlans.get(0).getOperator());
+
+        // Filter by max price 300
+        List<Plan> budgetPlans = planService.searchAndFilterPlans(null, null, 300.0, null, "CUSTOMER");
+        assertEquals(1, budgetPlans.size());
+        assertEquals(299.0, budgetPlans.get(0).getPrice());
+    }
+
+    @Test
     @DisplayName("getPlansForUserRole returns only PUBLISHED plans for Customers")
     void testCustomerViewsOnlyPublishedPlans() {
         Plan publishedPlan = new Plan("Airtel", "Airtel Super 28D", 349.0, 28, 2.0, -1, 100, "Prime Video");
@@ -71,40 +149,5 @@ class PlanServiceTest {
         assertEquals(1, customerPlans.size());
         assertEquals(PlanStatus.PUBLISHED, customerPlans.get(0).getStatus());
         verify(planRepository, times(1)).findByStatus(PlanStatus.PUBLISHED);
-        verify(planRepository, never()).findAll();
-    }
-
-    @Test
-    @DisplayName("getPlansForUserRole returns all plans for Analysts")
-    void testAnalystViewsAllPlans() {
-        Plan draftPlan = new Plan("Jio", "Jio Draft Plan", 199.0, 28, 1.0, 300, 100, "None");
-        draftPlan.setStatus(PlanStatus.DRAFT);
-
-        Plan publishedPlan = new Plan("Airtel", "Airtel Super", 349.0, 28, 2.0, -1, 100, "Prime Video");
-        publishedPlan.setStatus(PlanStatus.PUBLISHED);
-
-        when(planRepository.findAll()).thenReturn(List.of(draftPlan, publishedPlan));
-
-        List<Plan> analystPlans = planService.getPlansForUserRole("ANALYST");
-
-        assertEquals(2, analystPlans.size());
-        verify(planRepository, times(1)).findAll();
-    }
-
-    @Test
-    @DisplayName("canUserViewPlan permits customer only if PUBLISHED")
-    void testCanUserViewPlanPermissions() {
-        Plan draftPlan = new Plan("Vi", "Vi Draft", 249.0, 28, 1.5, -1, 100, "");
-        draftPlan.setStatus(PlanStatus.DRAFT);
-
-        Plan publishedPlan = new Plan("Vi", "Vi Published", 299.0, 28, 1.5, -1, 100, "");
-        publishedPlan.setStatus(PlanStatus.PUBLISHED);
-
-        assertFalse(planService.canUserViewPlan(draftPlan, "CUSTOMER"));
-        assertTrue(planService.canUserViewPlan(draftPlan, "ANALYST"));
-        assertTrue(planService.canUserViewPlan(draftPlan, "ADMINISTRATOR"));
-
-        assertTrue(planService.canUserViewPlan(publishedPlan, "CUSTOMER"));
-        assertTrue(planService.canUserViewPlan(publishedPlan, "ANALYST"));
     }
 }

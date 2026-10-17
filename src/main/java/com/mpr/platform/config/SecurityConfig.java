@@ -1,16 +1,17 @@
 package com.mpr.platform.config;
 
+import com.mpr.platform.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -18,55 +19,56 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final UserService userService;
+
+    public SecurityConfig(@Lazy UserService userService) {
+        this.userService = userService;
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
-        UserDetails customer = User.builder()
-                .username("customer")
-                .password(passwordEncoder.encode("password"))
-                .roles("CUSTOMER")
-                .build();
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
 
-        UserDetails analyst = User.builder()
-                .username("analyst")
-                .password(passwordEncoder.encode("password"))
-                .roles("ANALYST")
-                .build();
-
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder.encode("password"))
-                .roles("ADMINISTRATOR")
-                .build();
-
-        return new InMemoryUserDetailsManager(customer, analyst, admin);
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .authenticationProvider(authenticationProvider())
             .authorizeHttpRequests(auth -> auth
-                // Static resources and health endpoints
+                // Static resources and health check
                 .requestMatchers("/actuator/**", "/css/**", "/js/**", "/images/**", "/error").permitAll()
-                // Home page and general catalog view (controller handles role-based view filtering)
-                .requestMatchers("/", "/plans", "/plans/{id:[0-9]+}", "/api/plans", "/api/plans/{id:[0-9]+}").permitAll()
-                // Plan creation: Strictly reserved for ANALYST and ADMINISTRATOR
-                .requestMatchers("/plans/new", "/api/plans").hasAnyRole("ANALYST", "ADMINISTRATOR")
+                // Public landing, registration, and catalogue browsing
+                .requestMatchers("/", "/register", "/login", "/plans", "/plans/{id:[0-9]+}",
+                                 "/recommendations", "/api/auth/**", "/api/plans", "/api/plans/{id:[0-9]+}",
+                                 "/api/recommendations").permitAll()
+                // Dashboard and plan management operations strictly for Analyst and Administrator
+                .requestMatchers("/plans/new", "/plans/{id:[0-9]+}/edit", "/plans/{id:[0-9]+}/status",
+                                 "/dashboard", "/api/dashboard/**").hasAnyRole("ANALYST", "ADMINISTRATOR")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
-                .defaultSuccessUrl("/plans", true)
+                .loginPage("/login")
+                .defaultSuccessUrl("/plans", false)
                 .permitAll()
             )
             .logout(logout -> logout
                 .logoutSuccessUrl("/")
                 .permitAll()
             )
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**")) // Allow REST API testing without CSRF token
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**")) // Allow testing REST APIs without CSRF token
             .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         return http.build();

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommendation Results — Mobile Plan Recommendation Platform</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" href="/css/styles.css">
+</head>
+<body>
+    <header class="brand-header">
+        <a th:href="@{/}" href="/" class="brand-title">
+            <span>📱</span> Mobile Plan Recommendation Platform
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/plans}" class="nav-link">Catalogue</a>
+            <a th:href="@{/recommendations}" class="btn-secondary-mpr btn-sm">New Query</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Top Recommended Tariffs</h1>
+                <p class="page-subtitle">
+                    Ranked by best fit for your requirements:
+                    <strong th:text="${request.monthlyDataGb} + ' GB Data'">30 GB</strong>,
+                    <strong th:text="${request.monthlyMinutes} + ' Mins Calling'">500 Mins</strong>,
+                    Budget within <strong th:text="'₹' + ${request.budget}">₹500</strong>.
+                </p>
+            </div>
+            <a th:href="@{/recommendations}" class="btn-primary-mpr">Adjust Preferences</a>
+        </div>
+
+        <!-- Empty state if no plans meet criteria -->
+        <div th:if="${#lists.isEmpty(results)}" class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <div class="empty-state-title">No Plans Within Budget</div>
+            <p class="empty-state-text">
+                No published plans were found under your maximum budget limit of ₹<span th:text="${request.budget}"></span>.
+                Try increasing your budget or checking our complete catalog.
+            </p>
+            <a th:href="@{/recommendations}" class="btn-primary-mpr">Modify Budget</a>
+            <a th:href="@{/plans}" class="btn-secondary-mpr" style="margin-left: 0.5rem;">View All Plans</a>
+        </div>
+
+        <!-- Results Grid -->
+        <div th:unless="${#lists.isEmpty(results)}" class="plan-grid">
+            <div th:each="res : ${results}" class="plan-card">
+                <div class="plan-card-header">
+                    <div>
+                        <span style="background: var(--accent-lilac); color: white; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; margin-right: 0.4rem;"
+                              th:text="'#' + ${res.rank} + ' Best Match'">#1 Best Match</span>
+                        <span class="plan-operator" th:text="${res.plan.operator}">Jio</span>
+                    </div>
+                    <span style="font-size: 1.15rem; font-weight: 800; color: var(--accent-pink);"
+                          th:text="${res.score} + ' / 100'">
+                        95.0 / 100
+                    </span>
+                </div>
+
+                <h3 class="plan-name" th:text="${res.plan.name}">Hero Unlimited 28D</h3>
+
+                <div class="plan-price-tag">
+                    <span class="plan-price" th:text="'₹' + ${#numbers.formatDecimal(res.plan.price, 1, 2)}">₹299.00</span>
+                    <span class="plan-validity" th:text="'/ ' + ${res.plan.validityDays} + ' Days'">/ 28 Days</span>
+                </div>
+
+                <div class="plan-spec-list">
+                    <div class="spec-item">
+                        <span class="spec-label">Daily Data</span>
+                        <span class="spec-value" th:text="${res.plan.dataGbPerDay} + ' GB/day'">1.5 GB/day</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Voice Calling</span>
+                        <span class="spec-value" th:text="${res.plan.voiceDescription}">Unlimited</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">SMS Quota</span>
+                        <span class="spec-value" th:text="${res.plan.smsCount} + ' / day'">100 / day</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Monthly Savings</span>
+                        <span class="spec-value" style="color: #059669;"
+                              th:text="'₹' + ${#numbers.formatDecimal(request.budget - res.plan.price, 1, 2)}">₹201.00</span>
+                    </div>
+                </div>
+
+                <div class="plan-benefits" th:text="${res.plan.benefits}">
+                    Disney+ Hotstar, Free Night 5G
+                </div>
+
+                <div style="background: var(--bg-primary); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;"
+                     th:text="'Score Factors: ' + ${res.scoreBreakdown}">
+                    Score breakdown
+                </div>
+
+                <div class="plan-card-footer">
+                    <a th:href="@{/plans/{id}(id=${res.plan.id})}" class="btn-secondary-mpr btn-sm">Full Specifications →</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

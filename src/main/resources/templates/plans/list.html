@@ -13,7 +13,9 @@
         </a>
         <div class="nav-links">
             <a th:href="@{/plans}" class="nav-link active">Catalogue</a>
+            <a th:href="@{/recommendations}" class="nav-link">Recommendations</a>
             <span th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                <a th:href="@{/dashboard}" class="nav-link">Dashboard</a>
                 <a th:href="@{/plans/new}" class="btn-primary-mpr btn-sm">+ Create Plan</a>
             </span>
             <span class="badge-role" th:text="${currentRole}">CUSTOMER</span>
@@ -44,19 +46,62 @@
                     Analyst view: Showing all catalogue plans across all workflow statuses (Draft, In Review, Published, Archived).
                 </p>
             </div>
-            <div th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
-                <a th:href="@{/plans/new}" class="btn-primary-mpr">+ New Plan Draft</a>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <a th:href="@{/recommendations}" class="btn-secondary-mpr">🎯 Plan Finder</a>
+                <div th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                    <a th:href="@{/plans/new}" class="btn-primary-mpr">+ New Plan Draft</a>
+                </div>
             </div>
+        </div>
+
+        <!-- Search and Filter Form -->
+        <div class="plan-card" style="margin-bottom: 2rem; padding: 1.25rem 1.5rem;">
+            <form th:action="@{/plans}" method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; gap: 1rem; align-items: end;">
+                <div>
+                    <label class="form-label" for="searchQ" style="font-size: 0.8rem;">Search keyword</label>
+                    <input type="text" id="searchQ" name="q" th:value="${query}" class="form-control" placeholder="Plan name or perk...">
+                </div>
+
+                <div>
+                    <label class="form-label" for="operatorSelect" style="font-size: 0.8rem;">Carrier</label>
+                    <select id="operatorSelect" name="operator" class="form-control">
+                        <option value="">All Carriers</option>
+                        <option value="Jio" th:selected="${selectedOperator == 'Jio'}">Jio</option>
+                        <option value="Airtel" th:selected="${selectedOperator == 'Airtel'}">Airtel</option>
+                        <option value="Vodafone Idea" th:selected="${selectedOperator == 'Vodafone Idea'}">Vodafone Idea</option>
+                        <option value="BSNL" th:selected="${selectedOperator == 'BSNL'}">BSNL</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label" for="maxPriceInput" style="font-size: 0.8rem;">Max Price (₹)</label>
+                    <input type="number" step="10" id="maxPriceInput" name="maxPrice" th:value="${maxPrice}" class="form-control" placeholder="Max budget">
+                </div>
+
+                <div>
+                    <label class="form-label" for="validitySelect" style="font-size: 0.8rem;">Validity</label>
+                    <select id="validitySelect" name="validity" class="form-control">
+                        <option value="">Any Validity</option>
+                        <option value="28" th:selected="${selectedValidity == 28}">28 Days</option>
+                        <option value="56" th:selected="${selectedValidity == 56}">56 Days</option>
+                        <option value="84" th:selected="${selectedValidity == 84}">84 Days</option>
+                        <option value="365" th:selected="${selectedValidity == 365}">365 Days (Annual)</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn-primary-mpr btn-sm" style="padding: 0.65rem 1rem;">Filter</button>
+                    <a th:href="@{/plans}" class="btn-secondary-mpr btn-sm" style="padding: 0.65rem 0.85rem;">Reset</a>
+                </div>
+            </form>
         </div>
 
         <!-- Plan Grid -->
         <div th:if="${#lists.isEmpty(plans)}" class="empty-state">
             <div class="empty-state-icon">📋</div>
-            <div class="empty-state-title">No Plans Found</div>
-            <p class="empty-state-text">There are currently no active plans available in this view.</p>
-            <div th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
-                <a th:href="@{/plans/new}" class="btn-primary-mpr">Create the First Plan</a>
-            </div>
+            <div class="empty-state-title">No Matching Plans Found</div>
+            <p class="empty-state-text">No tariffs match your search criteria. Try clearing the filters or searching for another keyword.</p>
+            <a th:href="@{/plans}" class="btn-primary-mpr">Reset Filters</a>
         </div>
 
         <div th:unless="${#lists.isEmpty(plans)}" class="plan-grid">
@@ -101,6 +146,9 @@
 
                 <div class="plan-card-footer">
                     <a th:href="@{/plans/{id}(id=${plan.id})}" class="btn-secondary-mpr btn-sm">View Details →</a>
+                    <span th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                        <a th:href="@{/plans/{id}/edit(id=${plan.id})}" style="color: var(--accent-pink); font-size: 0.85rem; font-weight: 600; text-decoration: none;">Edit Plan</a>
+                    </span>
                 </div>
             </div>
         </div>
