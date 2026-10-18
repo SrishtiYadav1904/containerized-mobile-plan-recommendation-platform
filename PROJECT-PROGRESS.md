@@ -742,13 +742,104 @@ flowchart TD
 ---
 
 ### Task 10 — Continuous Testing in Jenkins
-- **Task Objective:** Integrate Selenium UI tests into the Jenkins pipeline with automated test reporting, demonstrate build failure when a UI test fails, fix the issue, and demonstrate a successful rebuild.
-- **What Was Implemented:** *Not started yet.*
-- **Why It Matters:** Proves the "quality gate" concept: failing tests must halt the pipeline before any deployment occurs.
-- **Completion Status:** **Not started**.
+- **Task Objective:** Integrate the Task 9 Selenium automated UI end-to-end test suite directly into the Jenkins CI/CD pipeline (`Jenkinsfile`); establish separate execution stages for unit/integration tests and Selenium E2E tests; publish JUnit reports and archive failure diagnostics (PNG screenshots and HTML DOM dumps) in Jenkins; configure the pipeline so a failed test operates as a strict Quality Gate preventing downstream packaging and deployment; ensure headless Chrome dependencies are validated on the agent; demonstrate a safe, controlled defect workflow on a separate branch showing test failure, diagnostics capture, and prevention of deployment, followed by defect resolution and successful rebuild; and update all documentation.
+- **What Was Implemented:**
+  1. **Separated Pipeline Stages for Multi-Tier Testing (`Jenkinsfile`):**
+     - Refactored `Jenkinsfile` to decouple fast-feedback unit tests from browser-driven end-to-end user journeys:
+       - **Stage 3 (`Unit & Integration Tests`):** Runs `mvnw.cmd -B clean test -Dtest="!MobilePlanSeleniumTests"`, executing all 30 Spring Boot unit and integration tests (services, controllers, security, JPA) in ~25 seconds.
+       - **Stage 4 (`Selenium End-to-End Tests`):** Runs `mvnw.cmd -B test -Dtest=MobilePlanSeleniumTests -Dtest.base.url=http://localhost:${params.APP_PORT}/mpr-platform -Dheadless=true`, executing the 5 comprehensive end-to-end UI user journeys with headless Google Chrome against the target application.
+     - **Enforced Quality Gate:** If any test fails in Stage 3 or Stage 4, Maven exits with a non-zero exit code. Jenkins immediately marks the stage as failed and skips Stage 5 (`Package`) and Stage 6 (`Deploy to Server`), preventing defective code from ever reaching the application server.
+  2. **Browser & Driver Validation:**
+     - Enhanced Stage 2 (`Environment & Port Validation`) with automatic detection of Google Chrome at `C:\Program Files\Google\Chrome\Application\chrome.exe` and fallback paths.
+  3. **Diagnostic Test Archival & Reporting (`post { always { ... } }`):**
+     - Declarative `post { always { ... } }` block ensures that regardless of build pass or fail:
+       - `junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'` publishes the JUnit test results in Jenkins with failure stack traces and historical trend graphs.
+       - `archiveArtifacts allowEmptyArchive: true, artifacts: 'target/screenshots/*.png,target/screenshots/*.html,target/surefire-reports/*.txt'` captures UI failure screenshots and DOM source dumps.
+     - Deployable WAR artifacts are archived exclusively upon pipeline `success`.
+  4. **Dynamic Branch Parameterization (`BRANCH_NAME`):**
+     - Added parameter `BRANCH_NAME` (default: `develop`) to `Jenkinsfile` and updated Jenkins job XML `<name>*/${BRANCH_NAME}</name>` to allow Jenkins to trigger and test feature branches, defect demonstration branches, and `develop`.
+  5. **Controlled Defect Workflow Demonstration:**
+     - Created branch `defect/10-quality-gate-demonstration`.
+     - Introduced an intentional assertion defect in `MobilePlanSeleniumTests.java` asserting `SUPERUSER` instead of `CUSTOMER` in Journey 1.
+     - Executed **Jenkins Build #12**:
+       - Stage 3 passed (30/30 unit tests).
+       - Stage 4 failed at Journey 1 (`AssertionFailedError: expected: <SUPERUSER> but was: <CUSTOMER>`).
+       - `AfterTestExecutionCallback` captured `MobilePlanSeleniumTests_testAuthenticationAndRoleBasedAccess_20261018_114049.png` and HTML DOM dump.
+       - Quality Gate tripped: Stage 5 (`Package`) and Stage 6 (`Deploy to Server`) were skipped.
+       - Jenkins published JUnit report showing 1 failed test and archived the failure screenshot. Build status: `FAILURE`.
+     - Switched to clean branch `feature/10-continuous-testing-jenkins` and executed **Jenkins Build #13**:
+       - All 35 tests passed (30 unit + 5 selenium).
+       - Stage 5 packaged WAR (58.2 MB).
+       - Stage 6 deployed WAR to Tomcat on port 8084, verified by Actuator health probe returning `{"status":"UP"}`. Build status: `SUCCESS`.
+     - Merged PR #7 into `develop`, synced `main`, deleted defect branch, and executed **Jenkins Build #14** on `develop` (`SUCCESS`).
+- **Why It Matters:** Continuous Testing ensures that every code change is validated not just by unit tests, but by real user journey simulations before it can be packaged or deployed. Catching regressions automatically in the pipeline protects end users from broken workflows and eliminates manual testing bottlenecks.
+- **How It Works:**
+  - Developers push code to GitHub.
+  - Jenkins checks out the branch, validates environment and browser tools, runs unit tests, and then launches headless Chrome to execute Selenium user journeys.
+  - If any assertion fails, failure diagnostics (screenshot + DOM dump) are generated and archived in Jenkins, and downstream deployment is halted.
+  - If all tests pass, the WAR is compiled, archived, and deployed to Tomcat, followed by live health verification.
+- **Tools Used:** Jenkins 2.568.1, Declarative Pipeline, Selenium WebDriver 4.20.0, WebDriverManager 5.8.0, Google Chrome 155 (headless), JUnit 5, Apache Tomcat 10.1, PowerShell.
+- **Important Files:**
+  - `Jenkinsfile`: Pipeline definition with separate test stages, Quality Gate, and diagnostic archival.
+  - `scripts/trigger-jenkins-build.ps1`: Automated build trigger and live console streaming script.
+  - `src/test/java/com/mpr/platform/ui/BaseSeleniumTest.java`: Harness with `AfterTestExecutionCallback` for screenshot capture.
+  - `src/test/java/com/mpr/platform/ui/MobilePlanSeleniumTests.java`: 5 automated end-to-end UI user journeys.
+  - `docs/task-reports/task-10.md`: Official Task 10 milestone report.
+- **Commands Executed:**
+  ```powershell
+  # 1. Feature branch workflow
+  git checkout -b feature/10-continuous-testing-jenkins develop
+  git add Jenkinsfile scripts/trigger-jenkins-build.ps1
+  git commit -m "feat(jenkins): integrate selenium e2e quality gate and test failure diagnostics into pipeline"
+  git push -u origin feature/10-continuous-testing-jenkins
+
+  # 2. Defect demonstration workflow
+  git checkout -b defect/10-quality-gate-demonstration
+  git commit -am "test(defect): introduce deliberate role badge assertion defect for quality gate demonstration"
+  git push -u origin defect/10-quality-gate-demonstration
+  powershell -ExecutionPolicy Bypass -File scripts/trigger-jenkins-build.ps1 -BranchName "defect/10-quality-gate-demonstration" -AppPort "8084"
+
+  # 3. Fixed / Clean build verification
+  git checkout feature/10-continuous-testing-jenkins
+  powershell -ExecutionPolicy Bypass -File scripts/trigger-jenkins-build.ps1 -BranchName "feature/10-continuous-testing-jenkins" -AppPort "8084"
+
+  # 4. PR merge and develop sync
+  gh pr create --base develop --head feature/10-continuous-testing-jenkins ...
+  gh pr merge 7 --merge --delete-branch
+  git checkout develop ; git pull origin develop
+  git checkout main ; git merge develop ; git push origin main ; git checkout develop
+  git push origin --delete defect/10-quality-gate-demonstration
+  powershell -ExecutionPolicy Bypass -File scripts/trigger-jenkins-build.ps1 -BranchName "develop" -AppPort "8084"
+  ```
+- **Testing and Verification:**
+  - Jenkins Build #12 (Defect Run): FAILED at Stage 4 (Selenium E2E), 1 test failed (`testAuthenticationAndRoleBasedAccess`), failure screenshot and DOM dump archived, `Package` and `Deploy` skipped.
+  - Jenkins Build #13 (Feature Branch Run): SUCCESS, all 35 tests passed (30 unit + 5 selenium), WAR packaged and deployed, health check `{"status":"UP"}`.
+  - Jenkins Build #14 (`develop` Integration Run): SUCCESS, all 35 tests passed, WAR packaged and deployed, health check `{"status":"UP"}`.
+- **Evidence:**
+  - Task Report: [docs/task-reports/task-10.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-10.md)
+  - Jenkins Job: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`
+  - Jenkins Build #12 (Defect Run): `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/12/`
+  - Jenkins Build #12 Failure Screenshot Artifact: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/12/artifact/target/screenshots/MobilePlanSeleniumTests_testAuthenticationAndRoleBasedAccess_20261018_114049.png`
+  - Jenkins Build #13 (Fixed Run): `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/13/`
+  - Jenkins Build #14 (`develop` Clean Run): `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/14/`
+  - GitHub Pull Request #7: `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/pull/7`
+- **Problems Encountered:**
+  - *Problem 1:* Initial Jenkins Build #11 failed at Stage 2 with `'DRIVER' is not recognized as an internal or external command`.  
+    *Root Cause:* In Windows batch script syntax (`bat '''...'''`), the ampersand `&` in `echo [BROWSER & DRIVER VALIDATION]` acts as a command separator, attempting to execute `DRIVER VALIDATION` as a distinct command.  
+    *Resolution:* Replaced `&` with `AND` (`echo [BROWSER AND DRIVER VALIDATION]`) and simplified file existence checks.
+- **Remaining Work:** None. Task 10 continuous testing and quality gate enforcement are fully implemented and verified.
+- **Completion Status:** **Completed** (Demonstrated defect catch on Build #12, successful recovery on Build #13, clean integration on Build #14).
 - **Viva Preparation:**
-  - *Q1: What is a "Quality Gate" in CI/CD?*  
-    *Answer:* A mandatory check (such as unit test pass rate, code coverage, or UI test pass) that must succeed before an artifact is allowed to proceed to the next stage or to deployment.
+  - *Q1: What is a "Quality Gate" in a CI/CD pipeline and how is it implemented in our Jenkinsfile?*  
+    *Answer:* A Quality Gate is an automated enforcement policy that prevents code from progressing to downstream packaging or deployment unless specific quality criteria (e.g. test pass rates) are satisfied. In our `Jenkinsfile`, Stage 3 (Unit Tests) and Stage 4 (Selenium E2E Tests) execute prior to Stage 5 (Package) and Stage 6 (Deploy). If any test fails, Maven exits with code 1, halting the pipeline immediately and preventing unverified code from being packaged or deployed to Tomcat.
+  - *Q2: Why did we separate Unit/Integration Tests and Selenium E2E Tests into distinct pipeline stages?*  
+    *Answer:* Fast feedback and clear failure diagnosis. Unit tests execute in seconds and catch algorithmic or service-layer logic errors quickly. Selenium tests take longer (~30 seconds) because they drive a real headless browser. Separating them allows developers to see immediately whether a failure is a low-level unit issue or a high-level UI/workflow regression.
+  - *Q3: How does the pipeline preserve failure screenshots when a test fails?*  
+    *Answer:* JUnit 5's `AfterTestExecutionCallback` in `BaseSeleniumTest` detects test exceptions and saves a PNG screenshot and HTML DOM dump to `target/screenshots/`. In the `Jenkinsfile`, the `post { always { ... } }` block executes regardless of build outcome, calling `archiveArtifacts 'target/screenshots/*.png,target/screenshots/*.html'`, which copies the diagnostics to the Jenkins master server for inspection.
+  - *Q4: Why must deployable artifacts (WAR/JAR) be archived only in post { success { ... } }?*  
+    *Answer:* Archiving artifacts only upon pipeline success guarantees that flawed, broken, or unverified binaries are never saved as build artifacts or promoted to release repositories.
+  - *Q5: Describe the defect demonstration workflow conducted in Task 10.*  
+    *Answer:* We created a dedicated branch `defect/10-quality-gate-demonstration`, introduced an intentional assertion error in Journey 1 (`assertEquals("SUPERUSER", ...)`), and triggered Jenkins Build #12. The pipeline passed unit tests but tripped the Selenium Quality Gate in Stage 4, skipped packaging and deployment, captured a failure screenshot, and marked the build as FAILURE. We then switched back to the clean feature branch, ran Build #13 to verify full recovery (35/35 passed, WAR deployed), merged PR #7, and deleted the defect branch.
 
 ---
 
@@ -812,21 +903,21 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `feature/9-selenium-test-automation` (merged into `develop`, synced with `main`) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Active Local Branch** | `develop` (clean, synchronized with `origin/develop` and `main`) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
-| **Latest Commit SHA** | Verified commits on `feature/9-selenium-test-automation` / `develop` | `git log -n 1 --oneline` |
+| **Latest Commit SHA** | Verified commits on `develop` (`6c73fe0`) and `main` (`6c73fe0`) | `git log -n 1 --oneline` |
 | **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
 | **Test Suite Results** | **35 tests run, 0 failures, 0 errors, 0 skipped.** Full suite includes 30 unit/slice tests (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]) PLUS 5 Selenium WebDriver end-to-end user journeys (`MobilePlanSeleniumTests` [5]) covering RBAC, search/filter, plan creation draft, recommendation calculation, and status approval lifecycle. | Maven Surefire Reports (`target/surefire-reports/`) |
-| **Automated UI Testing** | **Completed:** 5 Selenium WebDriver journeys running in headless Chrome 155 with Page Object Model (POM), explicit waits, configurable base URL, and automated PNG screenshot & HTML DOM dump diagnostics upon test failure. | `src/test/java/com/mpr/platform/ui/` |
-| **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Build #7 executed with status `SUCCESS` (30/30 tests passed, WAR archived, WAR deployed to Tomcat 10.1 on port 8084, live Actuator health confirmed `UP`). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
-| **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB) | Jenkins Build #7 Archive on disk |
+| **Automated UI Testing & Quality Gate** | **Completed & Enforced:** Continuous Testing integrated into Jenkins pipeline with separate Unit/Integration and Selenium stages. Headless Chrome 155 with Page Object Model (POM), explicit waits, automated screenshot/DOM failure diagnostics, and strict Quality Gate halting packaging/deployment on failure. | `src/test/java/com/mpr/platform/ui/` |
+| **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Verified Build #12 (defect Quality Gate caught), Build #13 (feature branch SUCCESS 35/35 passed), and Build #14 (`develop` branch SUCCESS 35/35 passed, WAR deployed to Tomcat 10.1 on port 8084, live Actuator health confirmed `UP`). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
+| **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB), test failure screenshots (`target/screenshots/*.png`, `*.html`), JUnit XML reports | Jenkins Build #13 and #14 Archives on disk |
 | **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}`. | `http://localhost:8084/mpr-platform/actuator/health` |
 | **Docker Status** | Not started (Planned for Tasks 11 & 12). | N/A |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
 | **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
-| **Known Blockers** | None. Tasks 1–9 complete, automated, tested, deployed, and published. | `TASK-TRACKER.md` |
+| **Known Blockers** | None. Tasks 1–10 complete, automated, tested, deployed, and published. | `TASK-TRACKER.md` |
 
 ---
 
@@ -840,6 +931,8 @@ flowchart TD
 - **Continuous Delivery (CD):** An extension of CI where code changes are automatically tested and packaged, producing an artifact ready to be deployed to testing or production environments.
 - **Continuous Deployment:** Full automation where every verified code change passing all test gates is deployed directly into production without human approval.
 - **Pipeline as Code:** Managing CI/CD deployment pipelines using version-controlled configuration files (e.g., `Jenkinsfile`) directly inside the application repository, enabling peer reviews, audit trails, and consistent multi-branch builds.
+- **Quality Gate:** An automated enforcement threshold in CI/CD pipelines that blocks downstream packaging, artifact publishing, or server deployment if automated test suites, security scans, or code quality standards fail.
+- **Continuous Testing:** The process of executing automated tests (unit, integration, and end-to-end UI journeys) as part of the software delivery pipeline to obtain immediate feedback on business risks.
 - **Build Lifecycle (Maven):** A sequence of phases including `validate`, `compile`, `test`, `package`, `verify`, `install`, and `deploy`. Running `mvn clean test` cleans previous build outputs, compiles source code, and executes test suites.
 - **Maven Wrapper (mvnw):** A cross-platform script and properties bundle that downloads and invokes a project-locked Maven version without requiring a manual Maven installation on the host system.
 - **SCM Polling:** A periodic pull mechanism where Jenkins queries Git remote branches (e.g. `H/15 * * * *`) to discover new commits and trigger builds when inbound webhooks cannot penetrate local firewalls.
@@ -857,7 +950,7 @@ flowchart TD
 
 ## Section F: End-to-End Demonstration Guide
 
-When demonstrating the project in its current state (Tasks 1–8 Completed — Full MVP & Declarative Jenkins Pipeline as Code) to an evaluator:
+When demonstrating the project in its current state (Tasks 1–10 Completed — Full MVP, Declarative Jenkins Pipeline as Code, Selenium Continuous Testing Quality Gate, and Tomcat Server Deployment) to an evaluator:
 
 ### Step 1: Explain the Project Scope, Architecture & State Machine
 - **Action:** Open `README.md` and `PROJECT-PROGRESS.md`.
@@ -866,32 +959,28 @@ When demonstrating the project in its current state (Tasks 1–8 Completed — F
 ### Step 2: Show GitHub Source Control, PRs, and Release Tag
 - **Action:** Navigate to [https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform).
 - **Explain:**
-  - Show the branches (`main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`).
-  - Show the Pull Requests: PR #1, PR #2, PR #3, and PR #4, all cleanly merged.
+  - Show the branches (`main`, `develop`, feature branches).
+  - Show the Pull Requests: PR #1, PR #2, PR #3, PR #4, PR #5, PR #6, PR #7, all cleanly merged.
   - Show Release Tag `v0.1.0` marking the production-ready baseline.
-  - Show `Jenkinsfile` at repository root demonstrating Pipeline as Code.
+  - Show `Jenkinsfile` at repository root demonstrating Pipeline as Code with separate test stages.
   - Show `docs/server-deployment-guide.md` explaining Tomcat 10.1 setup and port 8084 binding.
 
-### Step 3: Demonstrate Jenkins Declarative Pipeline Execution
+### Step 3: Demonstrate Jenkins Continuous Testing & Quality Gate Enforcement
 - **Action:** Open browser to `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`.
 - **Explain:**
   - Point out that Jenkins is running locally on port `8080` and the job is driven directly by the repository `Jenkinsfile` via SCM.
-  - Show Build #4 status: **SUCCESS** with the 6 green pipeline stages:
-    1. `Checkout` (fetches `develop`)
-    2. `Environment & Port Validation` (validates ports; rejects 8072, 8081, 8082)
-    3. `Compile and Test` (fatal test gate with 30 tests)
-    4. `Package` (builds WAR)
-    5. `Archive and Report` (publishes JUnit reports & archives WAR)
-    6. `Deploy to Server` (checks Tomcat; logs pending status with setup steps if Tomcat is absent)
-  - Open **Test Result** link: show 30/30 tests passing with zero failures.
-  - Open **Build Artifacts**: show the archived 58 MB `containerized-mobile-plan-recommendation-platform.war` artifact.
+  - **Show Defect Run (Build #12):**
+    - Show that Stage 3 (`Unit & Integration Tests`) passed, but Stage 4 (`Selenium End-to-End Tests`) caught the regression and failed.
+    - Show that Stage 5 (`Package`) and Stage 6 (`Deploy to Server`) were skipped—the Quality Gate successfully prevented broken code from being packaged or deployed!
+    - Click into the build artifacts to show the archived failure screenshot (`.png`) and DOM source dump (`.html`).
+    - Click into the **Test Result** link to show JUnit failure details (`expected: <SUPERUSER> but was: <CUSTOMER>`).
+  - **Show Clean Integration Run (Build #13 / Build #14):**
+    - Show all green stages from Checkout through Deployment.
+    - Click into **Test Result**: show 35/35 tests passing with 0 failures (30 unit tests + 5 Selenium user journeys).
+    - Show the deployed binary WAR artifact and live Tomcat health check passing with `{"status":"UP"}`.
 
 ### Step 4: Demonstrate Running Application & Features
-- **Action:** Run:
-  ```powershell
-  mvn spring-boot:run
-  ```
-- **Open Browser:** Navigate to `http://localhost:8080` (or `http://localhost:8084` if deployed to Tomcat).
+- **Open Browser:** Navigate to `http://localhost:8084/mpr-platform/` (or `http://localhost:8080` if running standalone Spring Boot).
 - **Demonstrate:**
   1. **Catalogue View:** Browse 24 realistic Indian operator plans (Jio, Airtel, Vi, BSNL) filtered with soft pink/lilac styling.
   2. **Recommendation Form:** Visit `/recommendations`, enter customer monthly data (e.g. 50 GB), voice minutes (1000 mins), and budget (₹500). Inspect the ranked recommendation results and score breakdown pills.
@@ -903,16 +992,18 @@ When demonstrating the project in its current state (Tasks 1–8 Completed — F
 
 ## Section G: Next Steps
 
-### Immediate Next Task: Task 10 — Continuous Testing in Jenkins
+### Immediate Next Task: Task 11 — Docker Image and Container Lifecycle
 
-- **Goal:** Integrate automated Selenium WebDriver UI end-to-end test execution directly into the Jenkins CI/CD pipeline, establish automated JUnit/Selenium test reporting in Jenkins, demonstrate that a failing UI test triggers a fatal pipeline build failure (Quality Gate enforcement), fix the regression, and demonstrate a successful rebuild and deployment.
+- **Goal:** Author a multi-stage `Dockerfile` based on `tomcat:10.1-jdk17` or `eclipse-temurin:17-jre`, package the application WAR inside the container, configure container port `8080` mapped to host port `8085` (strictly avoiding forbidden ports `8072`, `8081`, `8082`), validate image building, inspect image layers and size, run and manage container lifecycle (start, inspect, stop, logs), verify `/actuator/health` on `http://localhost:8085/actuator/health`, and push the tagged image to Docker Hub under `srishtiyadav1904`.
 - **Prerequisites:**
-  - Full application running on Tomcat 10.1 (Satisfied ✅).
-  - 5 Selenium UI journeys designed, verified, and passing locally with Page Object Model (Satisfied ✅).
-  - Jenkins CI/CD pipeline operational via root `Jenkinsfile` (Satisfied ✅).
+  - Automated test suite (35/35 passing) and packaged WAR verified in CI (Satisfied ✅).
+  - Continuous Testing & Quality Gate enforced in Jenkins (Satisfied ✅).
+  - Port policy: Host port `8085` available; avoid `8072`, `8081`, `8082` (Satisfied ✅).
 - **Actions Required:**
-  1. Add a dedicated `UI Testing` stage to `Jenkinsfile` executing `mvnw.cmd test -Dtest=MobilePlanSeleniumTests` in headless Chrome.
-  2. Configure archive artifacts for `target/screenshots/*.png` and `target/screenshots/*.html` on test failures.
-  3. Intentionally introduce a breaking UI assertion to prove quality gate failure.
-  4. Fix assertion and prove pipeline recovery and green build.
-  5. Update `TASK-TRACKER.md`, `docs/task-reports/task-10.md`, and `PROJECT-PROGRESS.md`.
+  1. Create feature branch `feature/11-docker-containerization` from `develop`.
+  2. Author production-ready `Dockerfile` and `.dockerignore`.
+  3. Build Docker image `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:latest` and `:v0.1.0`.
+  4. Run container on host port `8085`: `docker run -d -p 8085:8080 --name mpr-platform ...`.
+  5. Verify health check on `http://localhost:8085/actuator/health`.
+  6. Document container lifecycle and push to Docker Hub.
+  7. Update `TASK-TRACKER.md`, `docs/task-reports/task-11.md`, and `PROJECT-PROGRESS.md`.

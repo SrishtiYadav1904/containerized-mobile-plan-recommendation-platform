@@ -11,7 +11,7 @@
 | 7 | Jenkins Installation and Continuous Integration Job | Completed | `docs/task-reports/task-07.md` (Build #2 SUCCESS, 30 tests passed, WAR archived) |
 | 8 | Pipeline as Code and Server Deployment | Completed | `docs/task-reports/task-08.md` (Jenkinsfile in SCM, Build #7 SUCCESS, deployed to Tomcat 10.1 on port 8084) |
 | 9 | Selenium Test Design and Local Execution | Completed | `docs/task-reports/task-09.md` (5 UI journeys passed, POM pattern, headless Chrome, screenshot failure diagnostics) |
-| 10 | Continuous Testing in Jenkins | Not started | `docs/task-reports/task-10.md` |
+| 10 | Continuous Testing in Jenkins | Completed | `docs/task-reports/task-10.md` (Build #12 defect Quality Gate caught, Build #13 & #14 SUCCESS 35/35 passed, failure diagnostics archived) |
 | 11 | Docker Image and Container Lifecycle | Not started | `docs/task-reports/task-11.md` |
 | 12 | Jenkins-Docker Continuous Deployment | Not started | `docs/task-reports/task-12.md` |
 | 13 | Configuration Management Script | Not started | `docs/task-reports/task-13.md` |
