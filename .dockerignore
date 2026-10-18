@@ -1,0 +1,26 @@
+# Git and metadata
+.git
+.gitignore
+.github
+.agent
+.agents
+.vscode
+.idea
+
+# Build artifacts: ignore everything in target except the production WAR
+target/*
+!target/*.war
+
+# Source and documentation (not needed in runtime container)
+src/
+docs/
+*.md
+*.ps1
+*.bat
+scripts/
+
+# Temporary and local files
+scratch*
+cookies*
+crumb*
+*.log
