@@ -1,17 +1,17 @@
 {
     "projectName":  "containerized-mobile-plan-recommendation-platform",
     "containerName":  "mpr-platform-container",
-    "deployedAt":  "2026-10-18T12:57:17.1120394+05:30",
-    "currentImage":  "srishtiyadav1904/containerized-mobile-plan-recommendation-platform:test-run",
-    "containerId":  "c20a8c9e905978253a3e993a8126f692e7b9ae9b9c44878af6396a9b77f64194",
+    "deployedAt":  "2026-10-18T14:12:57.1825876+05:30",
+    "currentImage":  "srishtiyadav1904/containerized-mobile-plan-recommendation-platform:latest",
+    "containerId":  "4404d5e9860497064d67ffae5a5d819b95e28c72c64ff8562d94f7bb06f0e653",
     "hostPort":  8085,
     "containerPort":  8080,
     "healthEndpoint":  "http://localhost:8085/actuator/health",
     "healthStatus":  "UP",
     "previousDeployment":  {
-                               "timestamp":  "2026-10-18T07:02:03.606356904Z",
+                               "timestamp":  "2026-10-18T08:40:37.426027724Z",
                                "status":  "running",
-                               "containerId":  "8c13dabdd198",
+                               "containerId":  "eed10c3efb33",
                                "health":  "healthy",
                                "image":  "srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0"
                            }
