@@ -1,10 +1,10 @@
 param(
     [string]$BranchName = "develop",
     [string]$AppPort = "8084",
-    [bool]$DeployWar = $true,
-    [bool]$DeployDocker = $true,
+    [string]$DeployWar = "true",
+    [string]$DeployDocker = "true",
     [string]$DockerHostPort = "8085",
-    [bool]$PushDockerHub = $false
+    [string]$PushDockerHub = "false"
 )
 
 $ErrorActionPreference = "Stop"

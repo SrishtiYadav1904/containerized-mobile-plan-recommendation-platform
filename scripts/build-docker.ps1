@@ -21,6 +21,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$dockerBinDir = "C:\Users\Shreyas\AppData\Local\Programs\DockerDesktop\resources\bin"
+if (Test-Path $dockerBinDir) {
+    if ($env:PATH -notlike "*$dockerBinDir*") {
+        $env:PATH = "$dockerBinDir;$env:PATH"
+    }
+}
+
 $primaryImageTag = "$($ImageName):$($ImageTag)"
 
 Write-Host "==========================================================" -ForegroundColor Cyan

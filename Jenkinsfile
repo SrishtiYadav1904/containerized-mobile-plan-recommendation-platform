@@ -69,6 +69,7 @@ pipeline {
         FORBIDDEN_PORTS = '8072,8081,8082'
         APP_NAME = 'containerized-mobile-plan-recommendation-platform'
         BUILT_IMAGE_TAG = ''
+        PATH = "C:\\Users\\Shreyas\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;${env.PATH}"
     }
 
     stages {
