@@ -943,13 +943,84 @@ flowchart TD
 ---
 
 ### Task 12 — Jenkins-Docker Continuous Deployment
-- **Task Objective:** Extend the Jenkins pipeline to automatically build versioned Docker images upon successful tests, tag images, and deploy containers continuously.
-- **What Was Implemented:** *Not started yet.*
-- **Why It Matters:** Closes the gap between code integration and containerized deployment, ensuring validated code is packaged into deployable containers automatically.
-- **Completion Status:** **Not started**.
+- **Task Objective:** Extend the Jenkins Declarative Pipeline (`Jenkinsfile`) to automatically build and version Docker images (`build-${BUILD_NUMBER}-${GIT_COMMIT_SHORT}`, `:latest`, `:v0.1.0`), deploy a fresh container (`mpr-platform-container`) to host port 8085 mapped to container port 8080 only after all unit and Selenium tests pass (Quality Gate), enforce host port safety policies (avoiding 8072, 8081, 8082), preserve rollback metadata (`deployment-state.json`) for Task 14, verify container health via Actuator, safeguard unrelated containers, support both local and remote registry workflows, and document execution.
+- **What Was Implemented:**
+  1. **Pipeline Parameterization & Environment Hardening:** Extended root `Jenkinsfile` with parameters `DEPLOY_DOCKER` (default: `true`), `DOCKER_HOST_PORT` (default: `8085`), `DOCKER_IMAGE_NAME`, `DOCKER_CONTAINER_NAME`, and `PUSH_DOCKER_HUB` (default: `false`). Configured Docker Desktop binary directory (`C:\Users\Shreyas\AppData\Local\Programs\DockerDesktop\resources\bin`) in the pipeline `environment { PATH = ... }` block to ensure `docker.exe` is discoverable within Jenkins workers.
+  2. **Automated Docker Image Packaging ([scripts/build-docker.ps1](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/scripts/build-docker.ps1)):** Authored PowerShell packaging automation that verifies the packaged WAR binary exists, constructs multi-tag arguments for build numbers (`build-${BUILD_NUMBER}-${GIT_COMMIT_SHORT}`), `:latest`, and `:v0.1.0`, executes `docker build`, and reports image layer metadata.
+  3. **Continuous Deployment with Rollback State Preservation ([scripts/deploy-docker.ps1](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/scripts/deploy-docker.ps1)):**
+     - Audits existing container `mpr-platform-container` and extracts running image tag, container ID, and status to `deployment-state.json` as `previousDeployment` (providing direct foundation for Task 14 automated rollback).
+     - Safely stops and removes only `mpr-platform-container` without touching unrelated containers (`driving-school-container` preserved).
+     - Launches fresh container on host port 8085 with `--restart unless-stopped`.
+     - Executes post-deployment automated health check probing `http://localhost:8085/actuator/health` with a 90-second timeout.
+     - Saves deployment metadata and health status to `deployment-state.json`.
+  4. **Jenkins Pipeline Stages 7, 8, and 9:**
+     - Stage 7 (`Build Docker Image`): Builds and tags image using `build-docker.ps1`.
+     - Stage 8 (`Deploy Docker Container`): Deploys fresh container using `deploy-docker.ps1` and enforces post-deployment health verification.
+     - Stage 9 (`Publish Image to Registry`): Checks for Jenkins credentials (`docker-hub-credentials`) or logs the verified local image workflow.
+     - Post Actions: Archives `deployment-state.json` alongside JUnit test results and WAR binary.
+  5. **Verified End-to-End Pipeline in Jenkins:**
+     - Executed Build #18: All 9 pipeline stages succeeded (`result: SUCCESS`).
+     - 35/35 automated tests passed (30 unit + 5 Selenium user journeys).
+     - Tomcat deployment verified UP on port 8084.
+     - Docker continuous deployment verified UP and healthy on host port 8085.
+     - Container `61da329c6b16` (`mpr-platform-container`) actively running and serving requests.
+- **Why It Matters:** Bridges the critical gap between Continuous Integration and Continuous Deployment. Code changes that pass all automated testing gates are immediately, automatically packaged into an immutable container image and deployed into a live container environment with zero manual file copying, while automatically capturing rollback state.
+- **How It Works:** Jenkins pipeline coordinates the entire lifecycle: checks out branch, compiles WAR, runs unit/integration tests, runs headless Selenium UI journeys, packages WAR, deploys to Tomcat, builds versioned Docker image, replaces container safely on port 8085, polls Actuator health until `UP`, and archives `deployment-state.json`.
+- **Tools Used:** Jenkins 2.568.1, Docker Desktop 29.8.2, PowerShell 5.1, Google Chrome 155, Selenium WebDriver, JUnit 5, Apache Tomcat 10.1, Spring Boot Actuator, Git, GitHub CLI.
+- **Important Files:**
+  - `Jenkinsfile`: Complete 9-stage Declarative Pipeline with Docker continuous deployment.
+  - `scripts/build-docker.ps1`: Automated Docker image building and multi-tagging script.
+  - `scripts/deploy-docker.ps1`: Container continuous deployment script with rollback state tracking.
+  - `deployment-state.json`: Machine-readable deployment metadata file for Task 14 rollback.
+  - `docs/task-reports/task-12.md`: Detailed Task 12 outcome report.
+- **Commands Executed:**
+  ```powershell
+  # 1. Trigger Jenkins build #18 for Task 12
+  powershell -ExecutionPolicy Bypass -File scripts/trigger-jenkins-build.ps1 -BranchName "feature/12-jenkins-docker-cd" -AppPort "8084" -DeployWar "true" -DeployDocker "true" -DockerHostPort "8085"
+
+  # 2. Verify Docker container status
+  docker ps --filter "name=mpr-platform-container"
+
+  # 3. Test health and web endpoints on host port 8085
+  curl.exe -s http://localhost:8085/actuator/health
+  curl.exe -I http://localhost:8085/plans
+  curl.exe -I http://localhost:8085/login
+
+  # 4. Verify archived deployment metadata from Jenkins
+  curl.exe -s http://localhost:8080/job/Mobile-Plan-Recommendation-CI/18/artifact/deployment-state.json
+  ```
+- **Testing and Verification:**
+  - Jenkins Build #18: Finished: `SUCCESS` (all 9 stages completed).
+  - 35/35 automated tests passing (30 unit/service/controller tests + 5 Selenium user journeys).
+  - Host port 8085 verified: container `61da329c6b16` is `Up (healthy)`.
+  - HTTP 200 responses confirmed for `/actuator/health`, `/plans`, and `/login`.
+  - Unrelated containers (`driving-school-container`) preserved untouched.
+- **Evidence:**
+  - Task Report: [docs/task-reports/task-12.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-12.md)
+  - Jenkins Job: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`
+  - Jenkins Build #18: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/18/`
+  - Archived Deployment Metadata: `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/18/artifact/deployment-state.json`
+  - Live Endpoint: `http://localhost:8085/actuator/health`
+- **Problems Encountered:**
+  - *Problem 1: 'docker' is not recognized as an internal or external command in Jenkins worker.*  
+    *Root Cause:* Docker Desktop is installed in the user directory (`C:\Users\Shreyas\AppData\Local\Programs\DockerDesktop\resources\bin`), which is not present in Jenkins' system environment PATH.  
+    *Resolution:* Injected Docker Desktop's binary directory into `Jenkinsfile` `environment { PATH = ... }` and added PATH resolution fallback inside `build-docker.ps1` and `deploy-docker.ps1`.
+  - *Problem 2: Invalid reference format for multi-tagging in `docker build`.*  
+    *Root Cause:* Windows batch parameter expansion passed `-AdditionalTags "latest,v0.1.0"` as a single string argument, causing `docker build` to interpret `:latest,v0.1.0` as a single invalid tag name.  
+    *Resolution:* Updated `scripts/build-docker.ps1` to parse, split, and sanitize comma-separated tag strings into individual `-t <repo>:<tag>` command-line arguments.
+- **Remaining Work:** None for Task 12. Continuous Deployment to Docker is fully automated and verified.
+- **Completion Status:** **Completed** (Build #18 SUCCESS, container `61da329c6b16` healthy on port 8085, rollback metadata archived).
 - **Viva Preparation:**
-  - *Q1: What is Continuous Deployment (CD)?*  
-    *Answer:* The automated practice where every change that passes all stages of the CI pipeline is released automatically to production without human intervention.
+  - *Q1: What is Continuous Deployment (CD) and how does our pipeline demonstrate it?*  
+    *Answer:* Continuous Deployment is the automated software engineering practice where every code change that passes all automated test gates is automatically packaged and deployed into a live runtime environment without human intervention. In our `Jenkinsfile`, code committed to Git triggers automated compilation, passes 30 unit tests (Stage 3) and 5 Selenium E2E UI journeys (Stage 4), packages the WAR (Stage 5), builds a versioned Docker image (Stage 7), and deploys a fresh container on host port 8085 (Stage 8), verifying post-deployment health before concluding the build.
+  - *Q2: Why is it critical to build versioned Docker image tags (like build-${BUILD_NUMBER}-${GIT_COMMIT_SHORT}) rather than only using latest?*  
+    *Answer:* Immutability, traceability, and rollback. The `latest` tag is mutable and gets overwritten on every build, destroying auditability. By tagging images with the Jenkins build number and Git commit SHA (e.g. `build-18-22013c2`), every running container can be traced directly to the exact source commit and pipeline run that created it. Furthermore, preserving versioned images allows automated rollback (Task 14) to quickly relaunch the previous known-good image if a new deployment fails.
+  - *Q3: How does the pipeline preserve rollback state and deployment metadata?*  
+    *Answer:* In `scripts/deploy-docker.ps1`, prior to stopping the active container, the script queries Docker inspect to capture the running container ID, image tag, status, and health. It writes both this `previousDeployment` and the `currentDeployment` into `deployment-state.json`. In the `Jenkinsfile`, `archiveArtifacts` archives `deployment-state.json` on every build, ensuring orchestrators and rollback scripts in Task 14 know exactly which container and image to revert to.
+  - *Q4: What happens if a post-deployment health check fails during Continuous Deployment?*  
+    *Answer:* If the containerized application fails to respond with HTTP 200 and `{"status":"UP"}` from `/actuator/health` within the 90-second timeout, `deploy-docker.ps1` dumps the recent container logs to stdout, marks `healthStatus: "DOWN"` in `deployment-state.json`, and exits with code 1. Jenkins catches the non-zero exit code, marks the build as `FAILURE`, skips any downstream publishing stages, and notifies developers without promoting broken software.
+  - *Q5: How does the pipeline safeguard other running containers on the developer machine?*  
+    *Answer:* The pipeline targets only the specific project container name (`mpr-platform-container`). In `scripts/deploy-docker.ps1`, `docker ps` and `docker stop/rm` use exact regular expression name matching (`^/mpr-platform-container$`). Unrelated containers (such as `driving-school-container`) and unrelated Docker volumes/networks are never touched.
 
 ---
 
@@ -989,21 +1060,21 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `feature/11-docker-containerization` (active, clean development branch) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Active Local Branch** | `feature/12-jenkins-docker-cd` (active, clean development branch) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins`, `feature/11-docker-containerization` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
-| **Latest Commit SHA** | Verified commits on `develop` (`6c73fe0`) and `main` (`6c73fe0`) | `git log -n 1 --oneline` |
+| **Latest Commit SHA** | Verified commit on `develop` (`93c7b59`) and `feature/12-jenkins-docker-cd` (`22013c2`) | `git log -n 1 --oneline` |
 | **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
 | **Test Suite Results** | **35 tests run, 0 failures, 0 errors, 0 skipped.** Full suite includes 30 unit/slice tests (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]) PLUS 5 Selenium WebDriver end-to-end user journeys (`MobilePlanSeleniumTests` [5]) covering RBAC, search/filter, plan creation draft, recommendation calculation, and status approval lifecycle. | Maven Surefire Reports (`target/surefire-reports/`) |
 | **Automated UI Testing & Quality Gate** | **Completed & Enforced:** Continuous Testing integrated into Jenkins pipeline with separate Unit/Integration and Selenium stages. Headless Chrome 155 with Page Object Model (POM), explicit waits, automated screenshot/DOM failure diagnostics, and strict Quality Gate halting packaging/deployment on failure. | `src/test/java/com/mpr/platform/ui/` |
-| **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Verified Build #12 (defect Quality Gate caught), Build #13 (feature branch SUCCESS 35/35 passed), and Build #14 (`develop` branch SUCCESS 35/35 passed, WAR deployed to Tomcat 10.1 on port 8084, live Actuator health confirmed `UP`). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
-| **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB), test failure screenshots (`target/screenshots/*.png`, `*.html`), JUnit XML reports | Jenkins Build #13 and #14 Archives on disk |
+| **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Verified Build #18 SUCCESS (all 9 stages passed: Checkout, Validation, Unit Tests, Selenium E2E Tests, Package WAR, Deploy to Tomcat on port 8084, Build Docker Image, Deploy Container to port 8085, and Post Archive Actions). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/18/` |
+| **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (55.5 MB), `deployment-state.json` (rollback metadata), test failure screenshots, surefire test reports | Jenkins Build #18 Archives on disk |
 | **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}`. | `http://localhost:8084/mpr-platform/actuator/health` |
-| **Docker Status** | **Completed & Active:** Container `mpr-platform-container` (`8c13dabdd198`) running image `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0` (ID `b85b15d7a8b4`) on host port `8085` (internal `8080`). Status: `Up (healthy)`, non-root `USER 1001`. Native Docker healthcheck and Spring Actuator health returning HTTP 200 `UP`. Unrelated containers untouched. | `http://localhost:8085/actuator/health`, `docs/docker-guide.md`, `docs/task-reports/task-11.md` |
+| **Docker Status** | **Continuous Deployment Active:** Container `mpr-platform-container` (`61da329c6b16`) automatically deployed by Jenkins Build #18 to host port `8085` (internal `8080`). Status: `Up (healthy)`, non-root `USER 1001`. Native Docker healthcheck and Spring Actuator health returning HTTP 200 `UP`. Machine-readable rollback metadata tracked in `deployment-state.json`. Unrelated containers untouched. | `http://localhost:8085/actuator/health`, `docs/docker-guide.md`, `docs/task-reports/task-12.md` |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
 | **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Docker Container Host Port: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
-| **Known Blockers** | None. Tasks 1–11 complete, automated, tested, containerized, and published. | `TASK-TRACKER.md` |
+| **Known Blockers** | None. Tasks 1–12 complete, automated, tested, containerized, continuously deployed, and published. | `TASK-TRACKER.md` |
 
 ---
 
@@ -1029,6 +1100,7 @@ flowchart TD
 - **Docker Image vs Container:** A Docker image is an immutable blueprint containing the code, runtime, system libraries, and settings. A Docker container is an isolated, executable runtime instance of that image.
 - **Port Mapping (`-p <host>:<container>`):** Directs incoming network traffic from a specific port on the host operating system to a listening port inside a Docker container.
 - **Non-Root Execution in Containers:** Enforcing execution under an unprivileged UID (e.g. `USER 1001`) inside Docker images to prevent privilege escalation or host compromise in case of application exploits.
+- **Continuous Deployment Pipeline:** An end-to-end automated sequence connecting source code commits to automated testing, container image packaging, container runtime deployment, and live health verification.
 - **Infrastructure as Code (IaC):** The practice of provisioning and managing computing infrastructure using machine-readable configuration files (e.g., Ansible YAML playbooks) rather than physical hardware configuration or manual interactive tools.
 - **Idempotency:** A property of configuration management operations whereby applying the same operation repeatedly yields the identical result without unintended state changes.
 - **Automated Rollback:** A resilience mechanism that automatically reverts the running deployment to the previously verified, healthy container image or artifact if post-deployment health probes fail.
@@ -1037,7 +1109,7 @@ flowchart TD
 
 ## Section F: End-to-End Demonstration Guide
 
-When demonstrating the project in its current state (Tasks 1–11 Completed — Full MVP, Declarative Jenkins Pipeline as Code, Selenium Continuous Testing Quality Gate, Tomcat Server Deployment, and Production Docker Containerization) to an evaluator:
+When demonstrating the project in its current state (Tasks 1–12 Completed — Full MVP, Declarative Jenkins Pipeline as Code, Selenium Continuous Testing Quality Gate, Tomcat Server Deployment, and Jenkins-Docker Continuous Deployment) to an evaluator:
 
 ### Step 1: Explain the Project Scope, Architecture & State Machine
 - **Action:** Open `README.md` and `PROJECT-PROGRESS.md`.
@@ -1047,9 +1119,9 @@ When demonstrating the project in its current state (Tasks 1–11 Completed — 
 - **Action:** Navigate to [https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform).
 - **Explain:**
   - Show the branches (`main`, `develop`, feature branches).
-  - Show the Pull Requests: PR #1 through PR #7 cleanly merged.
+  - Show the Pull Requests: PR #1 through PR #8 cleanly merged.
   - Show Release Tag `v0.1.0` marking the production-ready baseline.
-  - Show `Jenkinsfile` at repository root demonstrating Pipeline as Code with separate test stages.
+  - Show `Jenkinsfile` at repository root demonstrating Pipeline as Code with separate test and Docker deployment stages.
   - Show `docs/server-deployment-guide.md` and `docs/docker-guide.md`.
 
 ### Step 3: Demonstrate Jenkins Continuous Testing & Quality Gate Enforcement
@@ -1058,13 +1130,13 @@ When demonstrating the project in its current state (Tasks 1–11 Completed — 
   - Point out that Jenkins is running locally on port `8080` and the job is driven directly by the repository `Jenkinsfile` via SCM.
   - **Show Defect Run (Build #12):**
     - Show that Stage 3 (`Unit & Integration Tests`) passed, but Stage 4 (`Selenium End-to-End Tests`) caught the regression and failed.
-    - Show that Stage 5 (`Package`) and Stage 6 (`Deploy to Server`) were skipped—the Quality Gate successfully prevented broken code from being packaged or deployed!
+    - Show that Stage 5 (`Package`), Stage 6 (`Deploy to Server`), and Docker stages were skipped—the Quality Gate successfully prevented broken code from being packaged or deployed!
     - Click into the build artifacts to show the archived failure screenshot (`.png`) and DOM source dump (`.html`).
     - Click into the **Test Result** link to show JUnit failure details (`expected: <SUPERUSER> but was: <CUSTOMER>`).
-  - **Show Clean Integration Run (Build #13 / Build #14):**
-    - Show all green stages from Checkout through Deployment.
+  - **Show Clean Integration Run (Build #18):**
+    - Show all green stages from Checkout through Docker Deployment.
     - Click into **Test Result**: show 35/35 tests passing with 0 failures (30 unit tests + 5 Selenium user journeys).
-    - Show the deployed binary WAR artifact and live Tomcat health check passing with `{"status":"UP"}`.
+    - Show the deployed binary WAR artifact, archived `deployment-state.json`, and live health checks passing with `{"status":"UP"}`.
 
 ### Step 4: Demonstrate Running Application & Features on Standalone Tomcat
 - **Open Browser:** Navigate to `http://localhost:8084/mpr-platform/` (or `http://localhost:8080` if running standalone Spring Boot).
@@ -1075,51 +1147,45 @@ When demonstrating the project in its current state (Tasks 1–11 Completed — 
   4. **Executive Dashboard:** Access `/dashboard` to view real-time plan status distribution and average price metrics across operators.
   5. **Health Probe:** Visit `/actuator/health` to show `{"status":"UP"}`.
 
-### Step 5: Demonstrate Production Docker Container Lifecycle & Health Verification
+### Step 5: Demonstrate Jenkins-Docker Continuous Deployment on Port 8085
 - **Action:** Open PowerShell terminal and browser.
 - **Demonstrate:**
-  1. **Inspect Running Container:**
+  1. **Inspect Continuously Deployed Container:**
      ```powershell
      docker ps --filter "name=mpr-platform-container"
      ```
-     Show container status `Up (healthy)`, port mapping `0.0.0.0:8085->8080/tcp`, image `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0`.
+     Show container status `Up (healthy)`, port mapping `0.0.0.0:8085->8080/tcp`, and container ID matching Jenkins Build #18 logs.
   2. **Verify Security Hardening (Non-Root User):**
      ```powershell
      docker inspect --format='{{.Config.User}}' mpr-platform-container
      ```
      Show that user is `1001` (`appuser`), not root.
-  3. **Show Native Docker Healthcheck:**
+  3. **Verify Rollback Metadata (`deployment-state.json`):**
      ```powershell
-     docker inspect --format='{{json .State.Health}}' mpr-platform-container
+     Get-Content deployment-state.json | ConvertFrom-Json | Format-List
      ```
-     Show status `healthy` with 0 failing streak.
+     Show that `previousDeployment` (container ID, image tag, status) is preserved for Task 14 Automated Rollback.
   4. **Test Live Endpoints on Port 8085:**
      - Open browser or curl: `http://localhost:8085/actuator/health` -> HTTP 200 `{"status":"UP",...}`.
      - Open browser: `http://localhost:8085/plans` -> Full responsive catalogue view with soft pink/lilac theme.
      - Open browser: `http://localhost:8085/login` -> Authentication page.
-  5. **Show Container Logs & Graceful Lifecycle:**
-     ```powershell
-     docker logs --tail 20 mpr-platform-container
-     ```
-     Explain how the container can be cleanly stopped, started, and restarted without host dependencies.
 
 ---
 
 ## Section G: Next Steps
 
-### Immediate Next Task: Task 12 — Jenkins-Docker Continuous Deployment
+### Immediate Next Task: Task 13 — Configuration Management Script (Ansible)
 
-- **Goal:** Integrate Docker image building, tagging, container deployment, and health verification directly into the Jenkins Declarative Pipeline (`Jenkinsfile`).
+- **Goal:** Author an automated configuration management script / Ansible playbook to manage server provisioning, runtime dependencies, directory structure, and configuration files for the Containerized Mobile Plan Recommendation Platform.
 - **Prerequisites:**
-  - Production `Dockerfile` and `.dockerignore` verified (Satisfied ✅).
-  - Local image tags `:v0.1.0` and `:latest` verified (Satisfied ✅).
-  - Port policy: Host port `8085` allocated to Docker container; avoid `8072`, `8081`, `8082` (Satisfied ✅).
-  - Jenkins CI job running successfully on port `8080` (Satisfied ✅).
+  - Automated Jenkins-Docker Continuous Deployment verified (Satisfied ✅).
+  - Standalone Tomcat and Docker container health checks passing (Satisfied ✅).
+  - Port policy: Host port 8085 and Tomcat 8084 operational; avoid 8072, 8081, 8082 (Satisfied ✅).
 - **Actions Required:**
-  1. Create feature branch `feature/12-jenkins-docker-cd` from `develop`.
-  2. Extend `Jenkinsfile` with a dedicated `Build Docker Image` stage and a `Deploy Docker Container` stage.
-  3. Automate stopping and replacing any previous container version cleanly on host port 8085.
-  4. Incorporate automated post-deployment health check probing `http://localhost:8085/actuator/health`.
-  5. Trigger and verify end-to-end Jenkins pipeline build with containerized CD.
-  6. Document the Jenkins Docker CD pipeline in `docs/task-reports/task-12.md`.
-  7. Open and merge Pull Request into `develop` and sync `main`.
+  1. Create feature branch `feature/13-ansible-config-management` from `develop`.
+  2. Structure Ansible automation directory (`ansible/playbooks`, `ansible/roles`, `ansible/inventory`).
+  3. Author playbook for provisioning runtime environment, Tomcat setup, directory structure, and configuration files.
+  4. Document configuration management execution in `docs/task-reports/task-13.md`.
+  5. Update `TASK-TRACKER.md` and `PROJECT-PROGRESS.md`.
+  6. Open and merge Pull Request into `develop` and sync `main`.
+
