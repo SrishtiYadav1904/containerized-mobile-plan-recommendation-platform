@@ -662,15 +662,82 @@ flowchart TD
 ---
 
 ### Task 9 — Selenium Test Design and Local Execution
-- **Task Objective:** Design automated UI end-to-end test scripts using Selenium WebDriver covering critical user journeys (analyst creating a plan, customer viewing recommendations).
-- **What Was Implemented:** *Not started yet.*
-- **Why It Matters:** Unit tests check isolated methods, but end-to-end UI tests verify that HTML forms, browser sessions, JavaScript, and HTTP routes function harmoniously from a real user's perspective.
-- **Completion Status:** **Not started**.
+- **Task Objective:** Design and execute automated UI end-to-end test journeys using Selenium WebDriver (Java, JUnit 5, Maven Surefire) following the Page Object Model (POM) pattern against the deployed Containerized Mobile Plan Recommendation Platform on Apache Tomcat 10.1 (port 8084); cover 5 critical business journeys (Authentication & RBAC, Catalogue search and filtering, Analyst plan creation with DRAFT status badge, Customer usage/budget recommendation calculation, and Administrator status approval lifecycle `DRAFT -> IN_REVIEW -> PUBLISHED`); enforce explicit waits, headless Chrome compatibility, configurable base URL, and automated diagnostic failure artifacts (PNG screenshot and HTML page source dump); and document the strategy in `docs/selenium-test-plan.md`.
+- **What Was Implemented:**
+  1. **Selenium Test Plan (`docs/selenium-test-plan.md`):**
+     - Detailed strategy document covering objectives, test matrix, Page Object Model design, explicit wait strategy, and failure diagnostics policy.
+  2. **Maven Dependencies (`pom.xml`):**
+     - Added `org.seleniumhq.selenium:selenium-java:4.20.0` and `io.github.bonigarcia:webdrivermanager:5.8.0` under `<scope>test</scope>`.
+  3. **Base Selenium Test Harness (`src/test/java/com/mpr/platform/ui/BaseSeleniumTest.java`):**
+     - Headless Chrome configuration (`--headless=new`, `--no-sandbox`, `--disable-dev-shm-usage`, `--window-size=1920,1080`).
+     - Automatic ChromeDriver binary resolution via `WebDriverManager.chromedriver().setup()`.
+     - Explicit wait helper methods (`waitForVisible`, `waitForClickable`, `waitForUrlContains`, `safeClick`, `safeType`).
+     - JUnit 5 `AfterTestExecutionCallback` extension capturing full-page PNG screenshots and HTML DOM page source dumps to `target/screenshots/` upon any test assertion or timeout failure.
+  4. **Page Object Models (`src/test/java/com/mpr/platform/ui/pages/`):**
+     - `LoginPage.java`: Encapsulates login credentials input, JavaScript-assisted form submission, and login completion waits.
+     - `PlansPage.java`: Encapsulates catalogue card interactions, role badge polling, keyword search, operator filter, budget filter, `openPlanDetails`, and logout form submission.
+     - `PlanCreatePage.java`: Encapsulates tariff draft creation inputs, carrier selection, robust JavaScript form submission, and alert-success redirection wait.
+     - `RecommendationsPage.java`: Encapsulates customer monthly usage preferences input, calculation submission, and 4-factor scoring card validation.
+     - `PlanDetailPage.java`: Encapsulates plan specifications view, status badge polling, `submitForReview` action, and `approveAndPublish` action.
+     - `DashboardPage.java`: Encapsulates executive analytics KPI card count verification.
+  5. **Automated User Journey Suite (`src/test/java/com/mpr/platform/ui/MobilePlanSeleniumTests.java`):**
+     - **Journey 1 (`@Order(1)`): Authentication & Role-Based Access Control (RBAC):** Customer login verification, restricted access prevention on `/dashboard` (403 Forbidden), and Administrator login verification with 4+ KPI cards.
+     - **Journey 2 (`@Order(2)`): Plan Catalogue Browsing, Multi-Criteria Search & Filtering:** Seed plan volume validation, keyword search (`5G`), operator filter (`Airtel`), and budget filter (`₹300`).
+     - **Journey 3 (`@Order(3)`): Analyst Plan Draft Creation & Form Validation:** Analyst login, submission of new tariff draft, verification of redirect to `/plans` with success alert and `DRAFT` status badge.
+     - **Journey 4 (`@Order(4)`): Customer Usage & Budget Recommendation Calculation:** Submission of customer preferences (45 GB/mo, 500 mins, ₹500 budget, 5G/OTT benefits), verification of 4-factor scoring and top recommended card rendering.
+     - **Journey 5 (`@Order(5)`): Administrator Status Approval Lifecycle & Public Visibility:** Administrator login, plan creation, `DRAFT -> IN_REVIEW` transition, `IN_REVIEW -> PUBLISHED` approval, logout, and unauthenticated Guest catalogue verification.
+- **Why It Matters:** Unit tests check isolated classes and methods, but automated UI end-to-end tests verify that the full application stack—including Spring Security session management, Thymeleaf HTML rendering, CSS layouts, form parameter binding, database persistence, and browser interaction—works seamlessly together from a real user's perspective.
+- **How It Works:** JUnit 5 invokes `@BeforeEach` to launch a headless Chrome instance via ChromeDriver. Test methods navigate through page objects, interact with DOM elements using explicit `WebDriverWait` conditions, and verify system state. On failure, `AfterTestExecutionCallback` captures a PNG screenshot and HTML DOM dump for root-cause diagnosis.
+- **Tools Used:** Selenium WebDriver 4.20.0, WebDriverManager 5.8.0, JUnit 5, Google Chrome 155 (headless), ChromeDriver 155, Apache Maven.
+- **Important Files:**
+  - `docs/selenium-test-plan.md`: Automated test design specification.
+  - `src/test/java/com/mpr/platform/ui/BaseSeleniumTest.java`: Reusable test harness and failure diagnostics.
+  - `src/test/java/com/mpr/platform/ui/pages/*.java`: Page Object Model component classes.
+  - `src/test/java/com/mpr/platform/ui/MobilePlanSeleniumTests.java`: 5 End-to-end user journeys.
+  - `docs/task-reports/task-09.md`: Comprehensive Task 9 milestone report.
+- **Commands Executed:**
+  ```powershell
+  # Branch creation and test execution
+  git checkout -b feature/9-selenium-test-automation develop
+  .\mvnw.cmd test-compile
+  # Execute Selenium automated test suite against local Tomcat 10.1 (port 8084)
+  .\mvnw.cmd test -Dtest=MobilePlanSeleniumTests
+  # Execute full test suite (30 unit/slice + 5 Selenium UI journeys)
+  .\mvnw.cmd test
+  ```
+- **Testing and Verification:**
+  - `.\mvnw.cmd test -Dtest=MobilePlanSeleniumTests` Output:
+    - `Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 28.99 s` -> `BUILD SUCCESS`.
+  - `.\mvnw.cmd test` Full Suite Output:
+    - `Tests run: 35, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 54.296 s` -> `BUILD SUCCESS`.
+  - Failure diagnostic mechanism verified: captured 4 PNG screenshots and 4 HTML DOM dumps to `target/screenshots/` during iterative refinement.
+- **Git Activity:**
+  - Feature Branch: `feature/9-selenium-test-automation`
+  - Integration: Merged into `develop` via PR #6, synchronized with `main`.
+- **Evidence:**
+  - Test Plan: [docs/selenium-test-plan.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/selenium-test-plan.md)
+  - Task Report: [docs/task-reports/task-09.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-09.md)
+  - Test Suite Source: [src/test/java/com/mpr/platform/ui/MobilePlanSeleniumTests.java](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/src/test/java/com/mpr/platform/ui/MobilePlanSeleniumTests.java)
+- **Problems Encountered:**
+  - *Problem 1:* Initial screenshot capture failed because JUnit 5's `@AfterEach` runs before `TestWatcher.testFailed()`, terminating the WebDriver session before the screenshot was captured.  
+    *Resolution:* Replaced `TestWatcher` with `AfterTestExecutionCallback`, which executes immediately after the test method finishes and before `@AfterEach`, successfully dumping screenshots and HTML DOM trees to `target/screenshots/`.
+  - *Problem 2:* Headless Chrome form submissions on `/plans/new` and `/login` were intermittently skipped due to viewport scrolling offsets and HTML5 validation state.  
+    *Resolution:* Added `setInputValue` helper with explicit event dispatching (`input`, `change`) and used JavaScript `arguments[0].click()` with explicit wait polling for redirect alerts and URL transitions.
+  - *Problem 3:* Journey 2 operator assertion failed with `expected: <Airtel> but was: <AIRTEL>` due to CSS `text-transform: uppercase`.  
+    *Resolution:* Updated assertion to `assertTrue(op.trim().equalsIgnoreCase("Airtel"))`.
+- **Remaining Work:** None. Task 9 is fully complete and verified.
+- **Completion Status:** **Completed** (5 end-to-end Selenium journeys passing with 0 failures, 0 errors).
 - **Viva Preparation:**
-  - *Q1: What is Selenium WebDriver?*  
-    *Answer:* A browser automation framework that directly controls a browser instance (such as Chrome or Firefox) to simulate user actions like clicking, typing, and submitting forms.
-  - *Q2: Why are headless browsers used in CI pipelines?*  
-    *Answer:* Headless browsers run in memory without rendering a physical GUI window, allowing fast, automated browser testing on servers without graphical display servers.
+  - *Q1: What is the Page Object Model (POM) and why is it recommended for UI testing?*  
+    *Answer:* Page Object Model is a design pattern that abstracts web page UI elements and user interactions into dedicated Java classes (Page Objects). Tests interact with pages via high-level methods (e.g., `loginPage.login(...)`) rather than raw `driver.findElement` calls. This decouples test logic from HTML element locators, drastically reducing maintenance effort when UI templates change.
+  - *Q2: Explain the difference between Implicit Wait and Explicit Wait in Selenium.*  
+    *Answer:* Implicit wait configures a global polling duration for all element searches (`driver.manage().timeouts().implicitlyWait()`), which can slow down tests or cause flaky behavior. Explicit wait (`WebDriverWait`) polls for specific expected conditions (such as element visibility, clickability, or URL matching) on individual elements, returning immediately when satisfied and failing fast with meaningful timeout exceptions.
+  - *Q3: Why is headless Chrome mode required in CI/CD environments?*  
+    *Answer:* CI build agents and Linux/container environments typically run in server mode without a physical monitor or graphical desktop manager (X11/Wayland). Headless Chrome (`--headless=new`) runs the browser rendering engine entirely in memory, enabling automated UI test execution in headless environments with minimal CPU and memory overhead.
+  - *Q4: How does our test harness capture failure diagnostics?*  
+    *Answer:* We implement JUnit 5's `AfterTestExecutionCallback` in `BaseSeleniumTest`. If `context.getExecutionException()` is present, the harness casts `WebDriver` to `TakesScreenshot` to save a timestamped PNG image and dumps `driver.getPageSource()` into `target/screenshots/` before the browser session is terminated in `@AfterEach`.
+  - *Q5: Describe the 5 business journeys automated in our Selenium test suite.*  
+    *Answer:* (1) Authentication & RBAC (Customer restricted from dashboard, Administrator granted access); (2) Catalogue multi-criteria browsing (5G keyword, Airtel carrier, ₹300 budget filter); (3) Analyst plan creation with DRAFT badge; (4) Customer usage/budget recommendation calculation with 4-factor scoring; (5) Administrator status approval workflow (`DRAFT -> IN_REVIEW -> PUBLISHED`) with public guest verification.
 
 ---
 
@@ -745,20 +812,21 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `develop` (clean working tree, merged PR #5, synced with `main`) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Active Local Branch** | `feature/9-selenium-test-automation` (merged into `develop`, synced with `main`) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
-| **Latest Commit SHA** | `0871dfe` (`Merge pull request #5 from feature/8-fix-deployment-health-check`) | `git log -n 1 --oneline` |
+| **Latest Commit SHA** | Verified commits on `feature/9-selenium-test-automation` / `develop` | `git log -n 1 --oneline` |
 | **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
-| **Test Suite Results** | 30 tests run, 0 failures, 0 errors, 0 skipped (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]). All 30 tests published and verified in Jenkins JUnit reporting. | Jenkins Test Report (`http://localhost:8080/job/Mobile-Plan-Recommendation-CI/7/testReport/`) |
+| **Test Suite Results** | **35 tests run, 0 failures, 0 errors, 0 skipped.** Full suite includes 30 unit/slice tests (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]) PLUS 5 Selenium WebDriver end-to-end user journeys (`MobilePlanSeleniumTests` [5]) covering RBAC, search/filter, plan creation draft, recommendation calculation, and status approval lifecycle. | Maven Surefire Reports (`target/surefire-reports/`) |
+| **Automated UI Testing** | **Completed:** 5 Selenium WebDriver journeys running in headless Chrome 155 with Page Object Model (POM), explicit waits, configurable base URL, and automated PNG screenshot & HTML DOM dump diagnostics upon test failure. | `src/test/java/com/mpr/platform/ui/` |
 | **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Build #7 executed with status `SUCCESS` (30/30 tests passed, WAR archived, WAR deployed to Tomcat 10.1 on port 8084, live Actuator health confirmed `UP`). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
 | **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB) | Jenkins Build #7 Archive on disk |
 | **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}`. | `http://localhost:8084/mpr-platform/actuator/health` |
 | **Docker Status** | Not started (Planned for Tasks 11 & 12). | N/A |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
 | **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
-| **Known Blockers** | None. Tasks 1–8 complete, tested, deployed, and published. | `TASK-TRACKER.md` |
+| **Known Blockers** | None. Tasks 1–9 complete, automated, tested, deployed, and published. | `TASK-TRACKER.md` |
 
 ---
 
@@ -835,16 +903,16 @@ When demonstrating the project in its current state (Tasks 1–8 Completed — F
 
 ## Section G: Next Steps
 
-### Immediate Next Task: Task 9 — Selenium Test Design and Local Execution
+### Immediate Next Task: Task 10 — Continuous Testing in Jenkins
 
-- **Goal:** Design automated UI end-to-end test scripts using Selenium WebDriver covering critical user journeys (analyst creating a plan, customer viewing recommendations).
+- **Goal:** Integrate automated Selenium WebDriver UI end-to-end test execution directly into the Jenkins CI/CD pipeline, establish automated JUnit/Selenium test reporting in Jenkins, demonstrate that a failing UI test triggers a fatal pipeline build failure (Quality Gate enforcement), fix the regression, and demonstrate a successful rebuild and deployment.
 - **Prerequisites:**
-  - Full MVP application running and tested (Satisfied ✅).
-  - Pipeline as Code and WAR packaging operational (Satisfied ✅).
-  - Chrome / Edge browser available on the system.
+  - Full application running on Tomcat 10.1 (Satisfied ✅).
+  - 5 Selenium UI journeys designed, verified, and passing locally with Page Object Model (Satisfied ✅).
+  - Jenkins CI/CD pipeline operational via root `Jenkinsfile` (Satisfied ✅).
 - **Actions Required:**
-  1. Add Selenium WebDriver and WebDriverManager dependencies to `pom.xml`.
-  2. Implement Page Object Model (POM) or clean test structure for login, plan browsing, and recommendation flow.
-  3. Ensure tests run both headfully (for local demonstration) and headlessly (for CI execution).
-  4. Verify test execution locally with `mvn test` or targeted test suite.
-  5. Update `TASK-TRACKER.md`, `docs/task-reports/task-09.md`, and `PROJECT-PROGRESS.md`.
+  1. Add a dedicated `UI Testing` stage to `Jenkinsfile` executing `mvnw.cmd test -Dtest=MobilePlanSeleniumTests` in headless Chrome.
+  2. Configure archive artifacts for `target/screenshots/*.png` and `target/screenshots/*.html` on test failures.
+  3. Intentionally introduce a breaking UI assertion to prove quality gate failure.
+  4. Fix assertion and prove pipeline recovery and green build.
+  5. Update `TASK-TRACKER.md`, `docs/task-reports/task-10.md`, and `PROJECT-PROGRESS.md`.
