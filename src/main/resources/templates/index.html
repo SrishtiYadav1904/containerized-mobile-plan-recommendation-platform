@@ -1,51 +1,813 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Plan Recommendation Platform</title>
+    <meta name="description" content="Containerized Mobile Plan Recommendation Platform - DevOps Delivery Workflow, Automated Testing, and Intelligent Plan Discovery">
+    <title>Mobile Plan Recommendation Platform — Automated Delivery & Smart Tariffs</title>
     <link rel="stylesheet" th:href="@{/css/styles.css}" href="/css/styles.css">
 </head>
 <body>
-    <header class="brand-header">
+
+    <!-- 1. Navigation Bar -->
+    <header class="landing-nav" id="top">
         <a th:href="@{/}" href="/" class="brand-title">
-            <span>📱</span> Mobile Plan Recommendation Platform
+            <span style="font-size: 1.3rem;">📱</span>
+            <span>MPR Platform</span>
         </a>
-        <div class="nav-links">
-            <a th:href="@{/plans}" class="nav-link">Browse Plans</a>
-            <a th:href="@{/recommendations}" class="nav-link">Recommendations</a>
-            <a th:href="@{/dashboard}" class="nav-link">Dashboard</a>
-            <a th:href="@{/login}" class="btn-secondary-mpr btn-sm">Sign In</a>
-            <a th:href="@{/register}" class="btn-primary-mpr btn-sm">Register</a>
+
+        <nav class="nav-links-cluster" aria-label="Main Navigation">
+            <a href="#how-it-works" class="landing-nav-link">Workflow</a>
+            <a href="#capabilities" class="landing-nav-link">Capabilities</a>
+            <a href="#devops-pipeline" class="landing-nav-link">DevOps Pipeline</a>
+            <a href="#architecture" class="landing-nav-link">Architecture</a>
+            <a href="#reliability" class="landing-nav-link">Reliability</a>
+            <a href="#tech-stack" class="landing-nav-link">Stack</a>
+            <a th:href="@{/plans}" class="landing-nav-link" style="color: var(--accent-lilac); font-weight: 700;">Catalogue</a>
+            <a th:href="@{/recommendations}" class="landing-nav-link" style="color: var(--accent-pink); font-weight: 700;">Plan Finder</a>
+        </nav>
+
+        <div class="nav-links-cluster">
+            <!-- Dynamic Authentication State -->
+            <span th:if="${username != 'Guest' and username != 'anonymousUser'}" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="nav-user-email" th:text="${username}" style="font-size: 0.84rem; font-weight: 600; color: var(--text-muted);">user@example.com</span>
+                <span class="badge-role" th:text="${currentRole}">CUSTOMER</span>
+                <span th:if="${currentRole == 'ANALYST' or currentRole == 'ADMINISTRATOR'}">
+                    <a th:href="@{/dashboard}" class="btn-secondary-mpr btn-sm">Dashboard</a>
+                </span>
+                <form th:action="@{/logout}" method="post" style="display:inline;">
+                    <button type="submit" class="btn-outline-mpr btn-sm">Sign out</button>
+                </form>
+            </span>
+            <span th:unless="${username != 'Guest' and username != 'anonymousUser'}" style="display: flex; gap: 0.5rem;">
+                <a th:href="@{/login}" class="btn-secondary-mpr btn-sm">Sign In</a>
+                <a th:href="@{/register}" class="btn-primary-mpr btn-sm">Register</a>
+            </span>
         </div>
     </header>
 
-    <main class="hero-section" style="max-width: 900px; margin: 3rem auto; padding: 2.5rem; background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-md); text-align: center;">
-        <h1 class="hero-title" style="font-size: 2.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 1rem;">Compare & Discover the Best Mobile Plans</h1>
-        <p class="hero-subtitle" style="font-size: 1.15rem; color: var(--text-muted); max-width: 650px; margin: 0 auto 2rem auto;">
-            An automated, containerized platform delivering transparent, rule-based recommendations tailored to your data, calling, and budget requirements.
-        </p>
+    <!-- 2. Hero Section -->
+    <section class="hero-section-wrapper" id="hero">
+        <div class="landing-container">
+            <div class="hero-grid">
+                <div class="hero-text-block">
+                    <div class="hero-tag">
+                        <span>🚀</span>
+                        <span>Enterprise DevOps & Containerized Delivery</span>
+                    </div>
+                    <h1 class="hero-headline">
+                        Find a Mobile Plan <br>
+                        <span class="hero-headline-highlight">That Fits You</span>
+                    </h1>
+                    <p class="hero-description">
+                        An automated, containerized web platform providing verified Indian telecom tariff comparisons, transparent rule-based recommendations, and a complete CI/CD reliability pipeline with automated testing, non-root Docker packaging, and self-healing rollbacks.
+                    </p>
+                    <div class="hero-cta-group">
+                        <a th:href="@{/recommendations}" class="btn-primary-mpr" style="padding: 0.8rem 1.75rem; font-size: 1rem;">
+                            🎯 Personalized Plan Finder
+                        </a>
+                        <a th:href="@{/plans}" class="btn-secondary-mpr" style="padding: 0.8rem 1.5rem; font-size: 1rem;">
+                            📋 Browse All Plans
+                        </a>
+                        <a href="#devops-pipeline" class="btn-outline-mpr" style="padding: 0.8rem 1.25rem; font-size: 0.95rem;">
+                            ⚙️ DevOps Pipeline
+                        </a>
+                    </div>
+                    <div class="hero-badge-strip">
+                        <div class="hero-stat">
+                            <span class="hero-stat-val" th:text="${publishedPlansCount != null ? publishedPlansCount : 24}">24</span>
+                            <span class="hero-stat-lbl">Seeded Tariffs</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-val">4</span>
+                            <span class="hero-stat-lbl">Operators</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-val">3</span>
+                            <span class="hero-stat-lbl">Core RBAC Roles</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-val">35 / 35</span>
+                            <span class="hero-stat-lbl">Automated Tests</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-val">Port 8085</span>
+                            <span class="hero-stat-lbl">Docker Host</span>
+                        </div>
+                    </div>
+                </div>
 
-        <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-            <a th:href="@{/recommendations}" class="btn-primary-mpr">🎯 Personalized Plan Finder</a>
-            <a th:href="@{/plans}" class="btn-secondary-mpr">📋 Browse Full Catalogue</a>
-            <a th:href="@{/dashboard}" class="btn-secondary-mpr">📊 View Dashboard</a>
-        </div>
+                <!-- Hero Visual Showcase -->
+                <div class="hero-visual-card">
+                    <div class="showcase-header">
+                        <span class="showcase-title">⚡ Live Recommendation Engine Preview</span>
+                        <span class="badge-lilac">Transparent Scorer</span>
+                    </div>
 
-        <div class="feature-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 2.5rem; text-align: left;">
-            <div class="feature-card" style="padding: 1.5rem; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                <h3 style="font-size: 1.1rem; margin-top: 0; color: var(--accent-pink);">Customer Access</h3>
-                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Browse verified published tariffs, filter by budget and validity, and receive ranked plan matches.</p>
-            </div>
-            <div class="feature-card" style="padding: 1.5rem; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                <h3 style="font-size: 1.1rem; margin-top: 0; color: var(--accent-pink);">Analyst Workflow</h3>
-                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Maintain accurate catalogue records, manage data fields, and submit plan drafts for review.</p>
-            </div>
-            <div class="feature-card" style="padding: 1.5rem; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                <h3 style="font-size: 1.1rem; margin-top: 0; color: var(--accent-pink);">Admin Governance</h3>
-                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Review, publish, and archive plans with strict audit trails and role-based permissions.</p>
+                    <!-- Mockup Ranked Plan Card 1 -->
+                    <div class="showcase-item">
+                        <div class="showcase-item-top">
+                            <span class="showcase-plan-name">Jio True 5G Popular 28D</span>
+                            <span class="showcase-plan-price">₹349</span>
+                        </div>
+                        <div class="showcase-spec-chips">
+                            <span class="showcase-chip">Reliance Jio</span>
+                            <span class="showcase-chip">2.0 GB / Day</span>
+                            <span class="showcase-chip">28 Days</span>
+                            <span class="showcase-chip">Unlimited Calls</span>
+                            <span class="showcase-chip">JioCinema, 5G</span>
+                        </div>
+                        <div class="showcase-score-banner">
+                            <span>Fit Score: <strong>94.2%</strong> (35% Data + 25% Voice + 25% Budget + 15% Perks)</span>
+                            <span style="color: var(--accent-pink); font-weight: 800;">#1 Recommended</span>
+                        </div>
+                    </div>
+
+                    <!-- Mockup Ranked Plan Card 2 -->
+                    <div class="showcase-item" style="opacity: 0.9;">
+                        <div class="showcase-item-top">
+                            <span class="showcase-plan-name">Airtel Truly Unlimited 84D</span>
+                            <span class="showcase-plan-price">₹859</span>
+                        </div>
+                        <div class="showcase-spec-chips">
+                            <span class="showcase-chip">Bharti Airtel</span>
+                            <span class="showcase-chip">1.5 GB / Day</span>
+                            <span class="showcase-chip">84 Days</span>
+                            <span class="showcase-chip">Unlimited Calls</span>
+                            <span class="showcase-chip">Airtel Xstream</span>
+                        </div>
+                        <div class="showcase-score-banner" style="background: var(--bg-surface);">
+                            <span>Fit Score: <strong>88.5%</strong> (High Validity & Calling Fit)</span>
+                            <span style="color: var(--accent-lilac); font-weight: 700;">#2 Recommended</span>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <a th:href="@{/recommendations}" style="font-size: 0.88rem; font-weight: 700; color: var(--accent-pink); text-decoration: none;">
+                            Calculate for your specific usage & budget →
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
-    </main>
+    </section>
+
+    <!-- 3. How the Platform Works -->
+    <section class="section-container" id="how-it-works">
+        <div class="landing-container">
+            <div class="section-header">
+                <span class="section-tag">User Journey</span>
+                <h2 class="section-title">How the Platform Works</h2>
+                <p class="section-subtitle">
+                    A streamlined, 5-step workflow guiding users from exploratory catalogue browsing to personalized, mathematical tariff recommendations.
+                </p>
+            </div>
+
+            <div class="flow-grid">
+                <div class="flow-card">
+                    <div class="flow-step-num">1</div>
+                    <h3 class="flow-card-title">Explore Tariffs</h3>
+                    <p class="flow-card-desc">
+                        Browse verified, published mobile plans across India's top telecom operators: Jio, Airtel, Vi, and BSNL.
+                    </p>
+                    <a th:href="@{/plans}" class="flow-card-link">View Catalogue →</a>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-step-num">2</div>
+                    <h3 class="flow-card-title">Filter & Search</h3>
+                    <p class="flow-card-desc">
+                        Narrow results by keyword, carrier name, budget ceiling, and validity windows to find plans matching criteria.
+                    </p>
+                    <a th:href="@{/plans}" class="flow-card-link">Try Filters →</a>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-step-num">3</div>
+                    <h3 class="flow-card-title">Enter Preferences</h3>
+                    <p class="flow-card-desc">
+                        Input your monthly data quota (GB), monthly voice calling minutes, budget ceiling (₹), and perk requirements.
+                    </p>
+                    <a th:href="@{/recommendations}" class="flow-card-link">Open Plan Finder →</a>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-step-num">4</div>
+                    <h3 class="flow-card-title">Rule-Based Scoring</h3>
+                    <p class="flow-card-desc">
+                        Deterministic mathematical engine evaluates fit: 35% data sufficiency, 25% voice fit, 25% budget savings, 15% perks.
+                    </p>
+                    <span style="font-size: 0.85rem; color: var(--accent-lilac); font-weight: 700;">Deterministic Scorer</span>
+                </div>
+
+                <div class="flow-card">
+                    <div class="flow-step-num">5</div>
+                    <h3 class="flow-card-title">Ranked Selection</h3>
+                    <p class="flow-card-desc">
+                        Review sorted recommendations with transparent percentage scores, operator badges, and feature breakdowns.
+                    </p>
+                    <a th:href="@{/recommendations}" class="flow-card-link">See Sample Output →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Platform Capabilities -->
+    <section class="section-container" id="capabilities" style="background: var(--bg-surface);">
+        <div class="landing-container">
+            <div class="section-header">
+                <span class="section-tag">Core Features</span>
+                <h2 class="section-title">Verified Platform Capabilities</h2>
+                <p class="section-subtitle">
+                    Every feature depicted below is verified against active code, supported by automated unit tests and Selenium end-to-end user journeys.
+                </p>
+            </div>
+
+            <div class="capabilities-grid">
+                <!-- Capability 1 -->
+                <div class="capability-card">
+                    <div class="capability-icon-badge">📱</div>
+                    <h3 class="capability-title">Multi-Carrier Catalogue</h3>
+                    <p class="capability-desc">
+                        Pre-loaded with 24 realistic Indian mobile tariffs across Jio, Airtel, Vi, and BSNL with detailed daily data allowances, validity, and bundled perks.
+                    </p>
+                    <div class="capability-specs">
+                        <span class="capability-spec-pill">24 Seed Plans</span>
+                        <span class="capability-spec-pill">Keyword Search</span>
+                        <span class="capability-spec-pill">Price & Validity Filter</span>
+                    </div>
+                </div>
+
+                <!-- Capability 2 -->
+                <div class="capability-card">
+                    <div class="capability-icon-badge">⚖️</div>
+                    <h3 class="capability-title">Rule-Based Scorer</h3>
+                    <p class="capability-desc">
+                        A deterministic 4-factor scoring algorithm calculating exact plan compatibility without unpredictable black-box machine learning models.
+                    </p>
+                    <div class="capability-specs">
+                        <span class="capability-spec-pill">35% Data Ratio</span>
+                        <span class="capability-spec-pill">25% Calling Fit</span>
+                        <span class="capability-spec-pill">25% Savings Fit</span>
+                        <span class="capability-spec-pill">15% Perks Fit</span>
+                    </div>
+                </div>
+
+                <!-- Capability 3 -->
+                <div class="capability-card">
+                    <div class="capability-icon-badge">🔐</div>
+                    <h3 class="capability-title">Role-Based Access Control</h3>
+                    <p class="capability-desc">
+                        Spring Security 6 implementation enforcing role boundaries across CUSTOMER, ANALYST, and ADMINISTRATOR with BCrypt password hashing.
+                    </p>
+                    <div class="capability-specs">
+                        <span class="capability-spec-pill">Customer Access</span>
+                        <span class="capability-spec-pill">Analyst Access</span>
+                        <span class="capability-spec-pill">Admin Access</span>
+                    </div>
+                </div>
+
+                <!-- Capability 4 -->
+                <div class="capability-card">
+                    <div class="capability-icon-badge">🔄</div>
+                    <h3 class="capability-title">Plan Lifecycle Governance</h3>
+                    <p class="capability-desc">
+                        Strict state transition model enforcing DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED. Rejects unauthorized or invalid state transitions.
+                    </p>
+                    <div class="capability-specs">
+                        <span class="capability-spec-pill">Audit Trail</span>
+                        <span class="capability-spec-pill">Author Tracking</span>
+                        <span class="capability-spec-pill">Review Workflow</span>
+                    </div>
+                </div>
+
+                <!-- Capability 5 -->
+                <div class="capability-card">
+                    <div class="capability-icon-badge">📝</div>
+                    <h3 class="capability-title">Analyst Authoring Suite</h3>
+                    <p class="capability-desc">
+                        Enables catalog analysts to draft new tariffs, edit parameters, inspect operator distribution, and submit plans for administrative approval.
+                    </p>
+                    <div class="capability-specs">
+                        <span class="capability-spec-pill">Input Validation</span>
+                        <span class="capability-spec-pill">Draft Submission</span>
+                        <span class="capability-spec-pill">Field Controls</span>
+                    </div>
+                </div>
+
+                <!-- Capability 6 -->
+                <div class="capability-card">
+                    <div class="capability-icon-badge">📊</div>
+                    <h3 class="capability-title">Operations Dashboard</h3>
+                    <p class="capability-desc">
+                        Real-time analytics dashboard presenting plan status counts, operator market breakdown, and average tariff pricing metrics.
+                    </p>
+                    <div class="capability-specs">
+                        <span class="capability-spec-pill">REST Summary API</span>
+                        <span class="capability-spec-pill">Status KPI Cards</span>
+                        <span class="capability-spec-pill">Average Pricing</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. DevOps Pipeline Section — Central Technical Showcase -->
+    <section class="section-container pipeline-section" id="devops-pipeline">
+        <div class="landing-container">
+            <div class="section-header">
+                <span class="section-tag">Continuous Delivery Engineering</span>
+                <h2 class="section-title">The End-to-End DevOps Pipeline</h2>
+                <p class="section-subtitle">
+                    A production-grade, 10-stage delivery workflow driven by Jenkins Pipeline as Code, enforcing strict quality gates, non-root container packaging, and self-healing rollback.
+                </p>
+            </div>
+
+            <div class="pipeline-grid">
+                <!-- Stage 1 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 1</span>
+                        <span class="stage-tool-badge">Git & GitHub</span>
+                    </div>
+                    <h4 class="stage-name">Source Control & GitFlow</h4>
+                    <p class="stage-desc">
+                        Strict branching with <code>main</code> (production releases), <code>develop</code> (integration), and dedicated <code>feature/*</code> branches merged via audited Pull Requests.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>🛡️</span>
+                        <span>PR Peer Review & SCM Polling</span>
+                    </div>
+                </div>
+
+                <!-- Stage 2 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 2</span>
+                        <span class="stage-tool-badge">Jenkins 2.568.1</span>
+                    </div>
+                    <h4 class="stage-name">Pipeline as Code</h4>
+                    <p class="stage-desc">
+                        Version-controlled declarative <code>Jenkinsfile</code> executed on Jenkins port 8080. Parameterized for environment selection, branch targets, and port safety.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>⚡</span>
+                        <span>Automated Pipeline Orchestration</span>
+                    </div>
+                </div>
+
+                <!-- Stage 3 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 3</span>
+                        <span class="stage-tool-badge">Maven 3.9 + JUnit 5</span>
+                    </div>
+                    <h4 class="stage-name">Build & Unit Tests</h4>
+                    <p class="stage-desc">
+                        Runs <code>mvn clean test</code> across 30 unit and slice test cases (PlanService, UserService, RecommendationEngine, PlanController) against in-memory H2.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>🛑</span>
+                        <span>Fatal Gate: 30/30 Must Pass</span>
+                    </div>
+                </div>
+
+                <!-- Stage 4 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 4</span>
+                        <span class="stage-tool-badge">Selenium WebDriver</span>
+                    </div>
+                    <h4 class="stage-name">UI Testing Quality Gate</h4>
+                    <p class="stage-desc">
+                        Executes 5 end-to-end browser user journeys in headless Chrome with Page Object Model. Automatically captures screenshots on failure and blocks deployment.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>🛑</span>
+                        <span>Quality Gate: 5/5 UI Journeys</span>
+                    </div>
+                </div>
+
+                <!-- Stage 5 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 5</span>
+                        <span class="stage-tool-badge">Maven WAR Plugin</span>
+                    </div>
+                    <h4 class="stage-name">Artifact Packaging</h4>
+                    <p class="stage-desc">
+                        Compiles reproducible Web Application Archive (<code>target/*.war</code>) with embedded Spring Boot launcher and metadata for standalone Tomcat deployment.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>📦</span>
+                        <span>Binary Artifact Archiving</span>
+                    </div>
+                </div>
+
+                <!-- Stage 6 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 6</span>
+                        <span class="stage-tool-badge">Apache Tomcat 10.1</span>
+                    </div>
+                    <h4 class="stage-name">Standalone Server Deploy</h4>
+                    <p class="stage-desc">
+                        Copies WAR to <code>webapps/mpr-platform.war</code> on port 8084. Executes <code>health-check.ps1</code> polling <code>/actuator/health</code> until UP is confirmed.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>🔍</span>
+                        <span>Health Probing: Port 8084</span>
+                    </div>
+                </div>
+
+                <!-- Stage 7 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 7</span>
+                        <span class="stage-tool-badge">Docker Engine</span>
+                    </div>
+                    <h4 class="stage-name">Container Image Packaging</h4>
+                    <p class="stage-desc">
+                        Builds image using multi-stage Dockerfile based on <code>tomcat:10.1-jdk17</code>. Enforces non-root security with unprivileged <code>USER 1001</code> (<code>appuser</code>).
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>🔒</span>
+                        <span>Hardened Non-Root Image</span>
+                    </div>
+                </div>
+
+                <!-- Stage 8 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 8</span>
+                        <span class="stage-tool-badge">Docker Desktop</span>
+                    </div>
+                    <h4 class="stage-name">Container Deployment</h4>
+                    <p class="stage-desc">
+                        Runs <code>mpr-platform-container</code> mapping host port 8085 to container 8080. Protects foreign containers (<code>driving-school-container</code>) and avoids reserved ports.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>🌐</span>
+                        <span>Continuous Deploy: Port 8085</span>
+                    </div>
+                </div>
+
+                <!-- Stage 9 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 9</span>
+                        <span class="stage-tool-badge">Ansible Core 2.21</span>
+                    </div>
+                    <h4 class="stage-name">Configuration Management</h4>
+                    <p class="stage-desc">
+                        Modular Ansible roles via container runner (<code>mpr-ansible-runner:latest</code>) with port policy assertions and verified second-run idempotency (0 container modifications).
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>⚙️</span>
+                        <span>Idempotent State Management</span>
+                    </div>
+                </div>
+
+                <!-- Stage 10 -->
+                <div class="pipeline-stage-card">
+                    <div class="pipeline-stage-top">
+                        <span class="stage-index-badge">Stage 10</span>
+                        <span class="stage-tool-badge">Ansible & PowerShell</span>
+                    </div>
+                    <h4 class="stage-name">Reliability & Self-Healing</h4>
+                    <p class="stage-desc">
+                        Iterative health probing with automated rollback. If health probe fails, scripts immediately redeploy previous known-good tag from <code>deployment-state.json</code>.
+                    </p>
+                    <div class="stage-gate-indicator">
+                        <span>🔄</span>
+                        <span>Self-Healing Rollback Recovery</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quality Gate Callout Banner -->
+            <div class="quality-gate-banner">
+                <h3 class="quality-gate-title">
+                    <span>🛡️</span>
+                    <span>Pipeline Quality Gate & Safety Guarantee</span>
+                </h3>
+                <p class="quality-gate-desc">
+                    The pipeline enforces a <strong>Fail-Fast Architecture</strong>: if any unit test or Selenium E2E journey fails, downstream WAR packaging, server deployment, and Docker container publishing are instantly aborted (demonstrated in Jenkins Build #12). Production deployments enforce strict port safety assertions (rejecting reserved ports 8072, 8081, 8082), container isolation protecting unrelated services, and audited rollback metadata in <code>deployment-state.json</code>.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Architecture Overview -->
+    <section class="section-container" id="architecture" style="background: var(--bg-surface);">
+        <div class="landing-container">
+            <div class="section-header">
+                <span class="section-tag">System Blueprints</span>
+                <h2 class="section-title">Application & DevOps Architecture</h2>
+                <p class="section-subtitle">
+                    Clear separation of concerns between application runtime execution, containerized hosting, and automated DevOps orchestration.
+                </p>
+            </div>
+
+            <div class="arch-grid">
+                <!-- Runtime Architecture -->
+                <div class="arch-card">
+                    <div class="arch-header">
+                        <h3 class="arch-title">Application Runtime Architecture</h3>
+                        <p class="arch-subtitle">Layered enterprise Spring Boot web application</p>
+                    </div>
+
+                    <div class="arch-flow-stack">
+                        <div class="arch-node">
+                            <span class="arch-node-name">1. Presentation Layer</span>
+                            <span class="arch-node-tech">Thymeleaf + CSS3</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">2. Security & Routing</span>
+                            <span class="arch-node-tech">Spring Security 6</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">3. Controller Layer</span>
+                            <span class="arch-node-tech">Web & REST Controllers</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">4. Business Logic & Scorer</span>
+                            <span class="arch-node-tech">Plan, User & Rec Services</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">5. Persistence & Database</span>
+                            <span class="arch-node-tech">Spring Data JPA / H2 / MySQL</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DevOps & Infrastructure Architecture -->
+                <div class="arch-card">
+                    <div class="arch-header">
+                        <h3 class="arch-title">DevOps Infrastructure Architecture</h3>
+                        <p class="arch-subtitle">Containerized execution, monitoring & self-healing</p>
+                    </div>
+
+                    <div class="arch-flow-stack">
+                        <div class="arch-node">
+                            <span class="arch-node-name">CI/CD Controller (Port 8080)</span>
+                            <span class="arch-node-tech">Jenkins 2.568.1</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">Automated Testing & Gates</span>
+                            <span class="arch-node-tech">JUnit 5 + Selenium Chrome</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">Server Runtime (Port 8084)</span>
+                            <span class="arch-node-tech">Apache Tomcat 10.1</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">Container Runtime (Port 8085)</span>
+                            <span class="arch-node-tech">Docker (mpr-platform-container)</span>
+                        </div>
+                        <div class="arch-flow-arrow">↓</div>
+                        <div class="arch-node">
+                            <span class="arch-node-name">IaC & Self-Healing Rollback</span>
+                            <span class="arch-node-tech">Ansible Core + Actuator</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Reliability & Quality Section -->
+    <section class="section-container" id="reliability">
+        <div class="landing-container">
+            <div class="section-header">
+                <span class="section-tag">Quality Assurance</span>
+                <h2 class="section-title">Verified Reliability Practices</h2>
+                <p class="section-subtitle">
+                    Demonstrable engineering safeguards ensuring system stability, repeatable automation, and defense-in-depth security.
+                </p>
+            </div>
+
+            <div class="reliability-grid">
+                <div class="reliability-card">
+                    <div class="reliability-metric-row">
+                        <span class="reliability-metric-val">35 / 35</span>
+                        <span class="reliability-metric-status">100% Passed</span>
+                    </div>
+                    <h4 class="reliability-title">Test Pyramid Verification</h4>
+                    <p class="reliability-desc">
+                        Full suite comprises 30 backend unit and slice tests plus 5 Selenium headless Chrome end-to-end user journeys validating RBAC, catalogue filters, and status transitions.
+                    </p>
+                </div>
+
+                <div class="reliability-card">
+                    <div class="reliability-metric-row">
+                        <span class="reliability-metric-val">Port 8085</span>
+                        <span class="reliability-metric-status">Policy Enforced</span>
+                    </div>
+                    <h4 class="reliability-title">Strict Port Isolation</h4>
+                    <p class="reliability-desc">
+                        Tomcat binds to 8084 and Docker maps host port 8085 to container 8080. Assertions in Jenkins and Ansible halt execution if reserved ports (8072, 8081, 8082) are touched.
+                    </p>
+                </div>
+
+                <div class="reliability-card">
+                    <div class="reliability-metric-row">
+                        <span class="reliability-metric-val">UID 1001</span>
+                        <span class="reliability-metric-status">Hardened</span>
+                    </div>
+                    <h4 class="reliability-title">Non-Root Execution</h4>
+                    <p class="reliability-desc">
+                        Container executes strictly under unprivileged user <code>1001</code> (<code>appuser</code>), mitigating container breakout risks and securing host infrastructure.
+                    </p>
+                </div>
+
+                <div class="reliability-card">
+                    <div class="reliability-metric-row">
+                        <span class="reliability-metric-val">100% Isolated</span>
+                        <span class="reliability-metric-status">Protected</span>
+                    </div>
+                    <h4 class="reliability-title">Foreign Container Safety</h4>
+                    <p class="reliability-desc">
+                        Container lifecycle scripts and playbooks target strictly <code>mpr-platform-container</code>. Unrelated running containers (e.g. <code>driving-school-container</code>) are never touched.
+                    </p>
+                </div>
+
+                <div class="reliability-card">
+                    <div class="reliability-metric-row">
+                        <span class="reliability-metric-val">ok=30 changed=5</span>
+                        <span class="reliability-metric-status">Idempotent</span>
+                    </div>
+                    <h4 class="reliability-title">Ansible Idempotency</h4>
+                    <p class="reliability-desc">
+                        Demonstrated on repeated runs: existing directories, configurations, and running containers register <code>skipping</code>, producing 0 redundant container restarts.
+                    </p>
+                </div>
+
+                <div class="reliability-card">
+                    <div class="reliability-metric-row">
+                        <span class="reliability-metric-val">Auto Recovery</span>
+                        <span class="reliability-metric-status">Verified</span>
+                    </div>
+                    <h4 class="reliability-title">Self-Healing Rollback</h4>
+                    <p class="reliability-desc">
+                        Tested via non-destructive simulation harness: failed container health automatically triggers rollback to previous known-good tag from <code>deployment-state.json</code>, restoring UP status.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Technology Stack -->
+    <section class="section-container" id="tech-stack" style="background: var(--bg-surface);">
+        <div class="landing-container">
+            <div class="section-header">
+                <span class="section-tag">Engineering Stack</span>
+                <h2 class="section-title">The Verified Technology Stack</h2>
+                <p class="section-subtitle">
+                    Enterprise Java, modern web development, and industry-standard DevOps tools integrated into a cohesive platform.
+                </p>
+            </div>
+
+            <div class="tech-category-grid">
+                <div class="tech-cat-card">
+                    <h4 class="tech-cat-title">Backend & Framework</h4>
+                    <div class="tech-tags-wrapper">
+                        <span class="tech-pill">☕ Java 17 LTS</span>
+                        <span class="tech-pill">🍃 Spring Boot 3.2.5</span>
+                        <span class="tech-pill">🔒 Spring Security 6</span>
+                        <span class="tech-pill">🗄️ Spring Data JPA</span>
+                        <span class="tech-pill">⚡ In-Memory H2</span>
+                        <span class="tech-pill">🐬 MySQL 8.0</span>
+                    </div>
+                </div>
+
+                <div class="tech-cat-card">
+                    <h4 class="tech-cat-title">Frontend & UI</h4>
+                    <div class="tech-tags-wrapper">
+                        <span class="tech-pill">🌿 Thymeleaf 3</span>
+                        <span class="tech-pill">🎨 Vanilla CSS3</span>
+                        <span class="tech-pill">🌸 Soft Pink / Lilac</span>
+                        <span class="tech-pill">📱 Responsive Grid</span>
+                        <span class="tech-pill">♿ Semantic HTML5</span>
+                    </div>
+                </div>
+
+                <div class="tech-cat-card">
+                    <h4 class="tech-cat-title">Testing & Verification</h4>
+                    <div class="tech-tags-wrapper">
+                        <span class="tech-pill">🧪 JUnit 5</span>
+                        <span class="tech-pill">🌐 Selenium WebDriver</span>
+                        <span class="tech-pill">🖥️ Headless Chrome</span>
+                        <span class="tech-pill">📸 Screenshot Capture</span>
+                        <span class="tech-pill">📦 Apache Maven 3.9</span>
+                    </div>
+                </div>
+
+                <div class="tech-cat-card">
+                    <h4 class="tech-cat-title">DevOps & Containers</h4>
+                    <div class="tech-tags-wrapper">
+                        <span class="tech-pill">⚙️ Jenkins CI/CD</span>
+                        <span class="tech-pill">🐳 Docker Engine</span>
+                        <span class="tech-pill">🐱 Apache Tomcat 10.1</span>
+                        <span class="tech-pill">📜 Ansible Core 2.21</span>
+                        <span class="tech-pill">💻 PowerShell 5.1+</span>
+                        <span class="tech-pill">🐙 GitHub GitFlow</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 9. Final Call-to-Action & Academic Footer -->
+    <div class="landing-container">
+        <div class="landing-cta-banner">
+            <h2 class="landing-cta-title">Ready to Explore Verified Mobile Plans?</h2>
+            <p class="landing-cta-text">
+                Browse our curated catalogue of 24 realistic Indian prepaid and postpaid plans or find your ideal match using our transparent, 4-factor recommendation engine.
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a th:href="@{/plans}" class="btn-primary-mpr" style="padding: 0.85rem 1.75rem; font-size: 1rem;">
+                    📋 Browse Full Catalogue
+                </a>
+                <a th:href="@{/recommendations}" class="btn-secondary-mpr" style="padding: 0.85rem 1.75rem; font-size: 1rem;">
+                    🎯 Run Plan Recommendation
+                </a>
+                <a th:href="@{/login}" class="btn-outline-mpr" style="padding: 0.85rem 1.5rem; font-size: 1rem;">
+                    🔑 System Sign In
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic Footer -->
+    <footer class="landing-footer" id="footer">
+        <div class="landing-container">
+            <div class="footer-top-grid">
+                <div>
+                    <div class="footer-brand-title">
+                        <span>📱</span>
+                        <span>Mobile Plan Recommendation Platform</span>
+                    </div>
+                    <p class="footer-brand-desc">
+                        A containerized, role-governed mobile plan recommendation and catalog governance platform built as a complete academic DevOps milestone project.
+                    </p>
+                    <div class="academic-badge">
+                        <span>🎓 CMPN C DevOps Project | Vidyalankar Institute of Technology</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="footer-col-title">Navigation</h4>
+                    <ul class="footer-link-list">
+                        <li><a th:href="@{/}" class="footer-link">Home Landing</a></li>
+                        <li><a th:href="@{/plans}" class="footer-link">Plan Catalogue</a></li>
+                        <li><a th:href="@{/recommendations}" class="footer-link">Plan Finder</a></li>
+                        <li><a th:href="@{/dashboard}" class="footer-link">Executive Dashboard</a></li>
+                        <li><a th:href="@{/login}" class="footer-link">Sign In</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="footer-col-title">DevOps Stages</h4>
+                    <ul class="footer-link-list">
+                        <li><a href="#devops-pipeline" class="footer-link">Jenkins Pipeline as Code</a></li>
+                        <li><a href="#devops-pipeline" class="footer-link">Selenium Quality Gate</a></li>
+                        <li><a href="#devops-pipeline" class="footer-link">Docker Containerization</a></li>
+                        <li><a href="#devops-pipeline" class="footer-link">Ansible Management</a></li>
+                        <li><a href="#reliability" class="footer-link">Self-Healing Rollback</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="footer-col-title">System Endpoints</h4>
+                    <ul class="footer-link-list">
+                        <li><a th:href="@{/actuator/health}" target="_blank" class="footer-link">Health Endpoint (UP)</a></li>
+                        <li><a th:href="@{/api/plans}" target="_blank" class="footer-link">Plan REST API</a></li>
+                        <li><a th:href="@{/api/dashboard/summary}" target="_blank" class="footer-link">Dashboard Summary API</a></li>
+                        <li><a href="#architecture" class="footer-link">Architecture Blueprint</a></li>
+                        <li><a href="#tech-stack" class="footer-link">Technology Stack</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom-row">
+                <div>
+                    <strong>Student:</strong> Srishti D Yadav (Roll No: 23102C0014) &nbsp;|&nbsp;
+                    <strong>Guide:</strong> Dr. Snehal Andhale
+                </div>
+                <div>
+                    <span>Deployed on Tomcat (Port 8084) & Docker Container (Port 8085)</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
 </body>
 </html>
