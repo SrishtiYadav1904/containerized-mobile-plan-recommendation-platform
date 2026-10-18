@@ -79,14 +79,9 @@ pipeline {
                         echo [OK] Using system Maven.
                         call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -v
                     )
-                    echo [BROWSER & DRIVER VALIDATION]
-                    if exist "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" (
-                        echo [OK] Google Chrome detected at C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe
-                    ) else if exist "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe" (
-                        echo [OK] Google Chrome detected at C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe
-                    ) else (
-                        echo [WARN] Google Chrome standard path not found. Headless Chrome will rely on PATH or WebDriverManager auto-resolution.
-                    )
+                    echo [BROWSER AND DRIVER VALIDATION]
+                    if exist "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" echo [OK] Google Chrome detected at C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe
+                    if exist "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe" echo [OK] Google Chrome detected at C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe
                 '''
             }
         }
