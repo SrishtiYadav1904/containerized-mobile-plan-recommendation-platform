@@ -1,0 +1,84 @@
+---
+# ==============================================================================
+# Ansible Playbook: Automated Rollback & Recovery (Task 14)
+# ==============================================================================
+- name: Rollback Mobile Plan Recommendation Platform Container
+  hosts: mpr_servers
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+
+  vars:
+    mpr_rollback_image: "{{ lookup('env', 'MPR_ROLLBACK_IMAGE') | default('srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0', true) }}"
+
+  tasks:
+    - name: Rollback Initialization Banner
+      ansible.builtin.debug:
+        msg:
+          - "======================================================================"
+          - "  AUTOMATED ROLLBACK & RECOVERY INITIATED"
+          - "  Target Rollback Image: {{ mpr_rollback_image }}"
+          - "  Host Port:             {{ mpr_host_port }}"
+          - "  Container Name:        {{ mpr_container_name }}"
+          - "======================================================================"
+
+    - name: Validate that host port is not forbidden
+      ansible.builtin.assert:
+        that:
+          - mpr_host_port | int not in mpr_forbidden_ports
+        fail_msg: "CRITICAL: Cannot roll back to forbidden port {{ mpr_host_port }}!"
+
+    - name: Stop and remove degraded application container
+      ansible.builtin.command:
+        cmd: "docker rm -f {{ mpr_container_name }}"
+      register: remove_degraded
+      failed_when: false
+      changed_when: remove_degraded.rc == 0
+
+    - name: Launch restored application container with known-good image
+      ansible.builtin.command:
+        cmd: >-
+          docker run -d
+          --name {{ mpr_container_name }}
+          -p {{ mpr_host_port }}:{{ mpr_container_port }}
+          --restart {{ mpr_container_restart_policy }}
+          {{ mpr_rollback_image }}
+      register: launch_restored
+      changed_when: launch_restored.rc == 0
+
+    - name: Verify post-rollback application health endpoint
+      ansible.builtin.uri:
+        url: "{{ mpr_health_endpoint_url }}"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: health_resp
+      until:
+        - health_resp.status == 200
+        - "'UP' in health_resp.content"
+      retries: "{{ mpr_health_retry_count }}"
+      delay: "{{ mpr_health_retry_delay_seconds }}"
+      ignore_errors: true
+
+    - name: Fallback post-rollback health verification via curl
+      ansible.builtin.command:
+        cmd: "curl -sS -f {{ mpr_health_endpoint_url }}"
+      register: curl_health
+      until:
+        - curl_health.rc == 0
+        - "'UP' in curl_health.stdout"
+      retries: "{{ mpr_health_retry_count }}"
+      delay: "{{ mpr_health_retry_delay_seconds }}"
+      when: health_resp is failed
+      changed_when: false
+
+    - name: Rollback Success Summary
+      ansible.builtin.debug:
+        msg:
+          - "======================================================================"
+          - "  ROLLBACK COMPLETED SUCCESSFULLY"
+          - "  Restored Image:     {{ mpr_rollback_image }}"
+          - "  Container Name:     {{ mpr_container_name }}"
+          - "  Published Endpoint: http://localhost:{{ mpr_host_port }}/"
+          - "  Health Check:       UP"
+          - "======================================================================"
