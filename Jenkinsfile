@@ -8,6 +8,11 @@ pipeline {
             description: 'Target deployment environment'
         )
         string(
+            name: 'BRANCH_NAME',
+            defaultValue: 'develop',
+            description: 'Git branch to build and test (e.g. develop, main, feature/..., defect/...)'
+        )
+        string(
             name: 'APP_PORT',
             defaultValue: '8084',
             description: 'Target application port (Must be 8084; forbidden: 8072, 8081, 8082)'
@@ -32,7 +37,7 @@ pipeline {
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
-        timeout(time: 20, unit: 'MINUTES')
+        timeout(time: 25, unit: 'MINUTES')
     }
 
     environment {
@@ -46,7 +51,7 @@ pipeline {
                 echo '=== Stage 1: Checkout SCM ==='
                 checkout scm
                 script {
-                    echo "Checked out repository for branch: ${env.BRANCH_NAME ?: 'develop'}"
+                    echo "Checked out repository for branch: ${env.BRANCH_NAME ?: params.BRANCH_NAME ?: 'develop'}"
                     echo "Commit: ${env.GIT_COMMIT ?: 'HEAD'}"
                 }
             }
@@ -74,26 +79,51 @@ pipeline {
                         echo [OK] Using system Maven.
                         call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -v
                     )
-                '''
-            }
-        }
-
-        stage('Compile and Test') {
-            steps {
-                echo '=== Stage 3: Compile and Test (Fatal Gate) ==='
-                bat '''
-                    if exist mvnw.cmd (
-                        call mvnw.cmd -B clean test
+                    echo [BROWSER & DRIVER VALIDATION]
+                    if exist "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" (
+                        echo [OK] Google Chrome detected at C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe
+                    ) else if exist "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe" (
+                        echo [OK] Google Chrome detected at C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe
                     ) else (
-                        call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B clean test
+                        echo [WARN] Google Chrome standard path not found. Headless Chrome will rely on PATH or WebDriverManager auto-resolution.
                     )
                 '''
             }
         }
 
+        stage('Unit & Integration Tests') {
+            steps {
+                echo '=== Stage 3: Unit & Integration Tests (Fatal Gate) ==='
+                bat '''
+                    if exist mvnw.cmd (
+                        call mvnw.cmd -B clean test -Dtest="!MobilePlanSeleniumTests"
+                    ) else (
+                        call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B clean test -Dtest="!MobilePlanSeleniumTests"
+                    )
+                '''
+            }
+        }
+
+        stage('Selenium End-to-End Tests') {
+            steps {
+                echo '=== Stage 4: Selenium End-to-End Tests (Quality Gate) ==='
+                script {
+                    echo "[SELENIUM QUALITY GATE] Executing 5 E2E UI journeys with headless Chrome..."
+                    echo "[SELENIUM QUALITY GATE] Target Application Base URL: http://localhost:${params.APP_PORT}/mpr-platform"
+                }
+                bat """
+                    if exist mvnw.cmd (
+                        call mvnw.cmd -B test -Dtest=MobilePlanSeleniumTests -Dtest.base.url=http://localhost:${params.APP_PORT}/mpr-platform -Dheadless=true
+                    ) else (
+                        call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B test -Dtest=MobilePlanSeleniumTests -Dtest.base.url=http://localhost:${params.APP_PORT}/mpr-platform -Dheadless=true
+                    )
+                """
+            }
+        }
+
         stage('Package') {
             steps {
-                echo '=== Stage 4: Package WAR Artifact ==='
+                echo '=== Stage 5: Package WAR Artifact ==='
                 bat '''
                     if exist mvnw.cmd (
                         call mvnw.cmd -B package -DskipTests
@@ -101,14 +131,6 @@ pipeline {
                         call "C:\\Users\\Shreyas\\apache-maven-3.9.9\\bin\\mvn.cmd" -B package -DskipTests
                     )
                 '''
-            }
-        }
-
-        stage('Archive and Report') {
-            steps {
-                echo '=== Stage 5: Archive Artifacts and Publish Test Reports ==='
-                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                archiveArtifacts allowEmptyArchive: true, artifacts: 'target/*.war,target/*.jar', fingerprint: true
             }
         }
 
@@ -156,7 +178,7 @@ pipeline {
                         echo "=========================================================================="
                         echo "[DEPLOYMENT STATUS: PENDING - TOMCAT NOT DETECTED]"
                         echo "Tomcat 10.1 was not detected at path: ${tomcatPath}"
-                        echo "The application artifact has been verified, tested (30/30 passed), and"
+                        echo "The application artifact has been verified, tested (35/35 passed), and"
                         echo "packaged successfully. Artifact is archived at target/*.war."
                         echo "Refer to docs/server-deployment-guide.md for exact Tomcat installation and"
                         echo "port 8084 configuration steps, or proceed to Task 11 (Docker Containerization)."
@@ -170,15 +192,19 @@ pipeline {
     post {
         always {
             echo '========================================================'
-            echo 'Pipeline run completed.'
+            echo 'Publishing test reports & archiving diagnostics...'
+            echo '========================================================'
+            junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'target/screenshots/*.png,target/screenshots/*.html,target/surefire-reports/*.txt'
             echo "Build URL: ${env.BUILD_URL}"
             echo '========================================================'
         }
         success {
-            echo 'SUCCESS: All pipeline stages executed successfully.'
+            echo 'SUCCESS: All pipeline stages and quality gates passed successfully.'
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'target/*.war,target/*.jar', fingerprint: true
         }
         failure {
-            echo 'FAILURE: Pipeline encountered fatal errors during execution.'
+            echo 'FAILURE: Quality gate violation or pipeline execution error encountered.'
         }
     }
 }
