@@ -14,7 +14,7 @@
 | 10 | Continuous Testing in Jenkins | Completed | `docs/task-reports/task-10.md` (Build #12 defect Quality Gate caught, Build #13 & #14 SUCCESS 35/35 passed, failure diagnostics archived) |
 | 11 | Docker Image and Container Lifecycle | Completed | `docs/task-reports/task-11.md` (Dockerfile, non-root USER 1001, image `b85b15d7a8b4`, container `mpr-platform-container` healthy on host port 8085) |
 | 12 | Jenkins-Docker Continuous Deployment | Completed | `docs/task-reports/task-12.md` (Build #18 SUCCESS, automated Docker image build, container continuous deployment to host port 8085, rollback metadata archived) |
-| 13 | Configuration Management Script | Not started | `docs/task-reports/task-13.md` |
+| 13 | Configuration Management Script | Completed | `docs/task-reports/task-13.md` (Ansible playbook & inventory, container runner, port 8085 safety assertion, idempotent deployment, verified UP) |
 | 14 | Automated Provisioning and Reliability Validation | Not started | `docs/task-reports/task-14.md` |
 
 **Port plan:** Tomcat app `8084`; Docker host port `8085` → container port `8080`. Do not use `8072`, `8081`, or `8082`.

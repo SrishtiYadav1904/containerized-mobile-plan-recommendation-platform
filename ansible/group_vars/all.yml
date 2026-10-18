@@ -1,0 +1,69 @@
+# ==============================================================================
+# Ansible Global Group Variables - Mobile Plan Recommendation Platform
+# All variables are parameterized and support environment or vault injection.
+# ==============================================================================
+
+# Application Metadata
+mpr_app_name: "mpr-platform"
+mpr_container_name: "mpr-platform-container"
+
+# Docker Image Configuration (matches Task 11 & Task 12 image naming)
+mpr_docker_image_repository: "srishtiyadav1904/containerized-mobile-plan-recommendation-platform"
+mpr_docker_image_tag: "{{ lookup('env', 'MPR_IMAGE_TAG') | default('latest', true) }}"
+mpr_docker_image: "{{ mpr_docker_image_repository }}:{{ mpr_docker_image_tag }}"
+
+# Port Binding and Safety Policy
+# Non-negotiable constraint: Host port MUST be 8085, mapping to container 8080.
+# Ports 8072, 8081, and 8082 are strictly forbidden.
+mpr_host_port: 8085
+mpr_container_port: 8080
+mpr_forbidden_ports:
+  - 8072
+  - 8081
+  - 8082
+
+# Target Filesystem Layout
+mpr_deploy_base_dir: "/opt"
+mpr_deploy_dir: "{{ mpr_deploy_base_dir }}/mpr-platform"
+mpr_config_dir: "{{ mpr_deploy_dir }}/config"
+mpr_logs_dir: "{{ mpr_deploy_dir }}/logs"
+
+# Linux User & Group Permissions
+mpr_manage_user: true
+mpr_app_user: "mpruser"
+mpr_app_group: "mprgroup"
+mpr_app_user_shell: "/sbin/nologin"
+mpr_dir_mode: "0755"
+mpr_file_mode: "0640"
+mpr_secret_file_mode: "0600"
+
+# Target Packages & Prerequisites
+mpr_prerequisite_packages:
+  - curl
+  - ca-certificates
+  - tar
+
+# Container Lifecycle & Resource Limits
+mpr_container_restart_policy: "unless-stopped"
+mpr_container_memory_limit: "1024m"
+mpr_container_cpus: "1.0"
+
+# Application Environment Configuration
+# Secrets are dynamically resolved from environment variables / Jenkins / Vault.
+# Placeholders are used only if not provided in environment.
+mpr_spring_profiles_active: "docker"
+mpr_db_host: "{{ lookup('env', 'MPR_DB_HOST') | default('localhost', true) }}"
+mpr_db_port: "{{ lookup('env', 'MPR_DB_PORT') | default('3306', true) }}"
+mpr_db_name: "{{ lookup('env', 'MPR_DB_NAME') | default('mpr_db', true) }}"
+mpr_db_user: "{{ lookup('env', 'MPR_DB_USER') | default('mpr_app_user', true) }}"
+mpr_db_password: "{{ lookup('env', 'MPR_DB_PASSWORD') | default('REPLACE_WITH_VAULT_PASSWORD', true) }}"
+mpr_jwt_secret: "{{ lookup('env', 'MPR_JWT_SECRET') | default('REPLACE_WITH_VAULT_JWT_SECRET_KEY_32BYTES_MIN', true) }}"
+mpr_admin_initial_password: "{{ lookup('env', 'MPR_ADMIN_PASSWORD') | default('REPLACE_WITH_VAULT_ADMIN_PASSWORD', true) }}"
+
+# Post-Deployment Health Check Requirements
+mpr_health_host: "{{ lookup('env', 'MPR_HEALTH_HOST') | default('localhost', true) }}"
+mpr_health_endpoint_url: "http://{{ mpr_health_host }}:{{ mpr_host_port }}/actuator/health"
+mpr_health_timeout_seconds: 90
+mpr_health_retry_count: 18
+mpr_health_retry_delay_seconds: 5
+mpr_health_expected_status: "UP"

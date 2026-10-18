@@ -1,0 +1,16 @@
+# Port validation and safety enforcement
+- name: Validate that application host port is not in the forbidden ports list
+  ansible.builtin.assert:
+    that:
+      - mpr_host_port | int not in mpr_forbidden_ports
+      - mpr_host_port | int > 1024
+      - mpr_host_port | int <= 65535
+    fail_msg: >-
+      CRITICAL PORT POLICY VIOLATION: mpr_host_port ({{ mpr_host_port }}) is forbidden!
+      Ports {{ mpr_forbidden_ports }} are strictly reserved and must never be bound.
+      Please set mpr_host_port to 8085 or another approved port.
+    success_msg: "Port validation passed: Host port {{ mpr_host_port }} is safe and permitted."
+
+- name: Display approved port configuration
+  ansible.builtin.debug:
+    msg: "Application mapped from host port {{ mpr_host_port }} to container port {{ mpr_container_port }}."

@@ -1,0 +1,5 @@
+# Handlers for role mpr_platform
+- name: Restart mpr platform container
+  ansible.builtin.command:
+    cmd: "docker restart {{ mpr_container_name }}"
+  changed_when: true

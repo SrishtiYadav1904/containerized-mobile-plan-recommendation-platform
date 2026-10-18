@@ -1,0 +1,53 @@
+# Prerequisites, OS packages, and Docker runtime validation
+- name: Verify Docker CLI is available on the target node
+  ansible.builtin.command:
+    cmd: "docker --version"
+  register: docker_version_check
+  changed_when: false
+  failed_when: docker_version_check.rc != 0
+
+- name: Display detected Docker version
+  ansible.builtin.debug:
+    msg: "Target Docker runtime: {{ docker_version_check.stdout }}"
+
+- name: Verify Docker daemon is active and responding
+  ansible.builtin.command:
+    cmd: "docker info"
+  register: docker_daemon_check
+  changed_when: false
+  failed_when: docker_daemon_check.rc != 0
+
+- name: Install prerequisite packages on Linux managed nodes
+  ansible.builtin.package:
+    name: "{{ mpr_prerequisite_packages }}"
+    state: present
+  when:
+    - ansible_pkg_mgr is defined
+    - ansible_pkg_mgr in ['apt', 'dnf', 'yum', 'zypper']
+  become: true
+  ignore_errors: true
+
+- name: Create dedicated application group
+  ansible.builtin.group:
+    name: "{{ mpr_app_group }}"
+    state: present
+    system: true
+  when:
+    - mpr_manage_user | bool
+    - (ansible_system | default('Linux')) == "Linux"
+  become: true
+  ignore_errors: true
+
+- name: Create dedicated application service user
+  ansible.builtin.user:
+    name: "{{ mpr_app_user }}"
+    group: "{{ mpr_app_group }}"
+    shell: "{{ mpr_app_user_shell }}"
+    system: true
+    create_home: false
+    state: present
+  when:
+    - mpr_manage_user | bool
+    - (ansible_system | default('Linux')) == "Linux"
+  become: true
+  ignore_errors: true

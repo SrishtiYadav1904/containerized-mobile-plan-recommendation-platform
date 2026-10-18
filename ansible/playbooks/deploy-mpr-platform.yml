@@ -1,0 +1,37 @@
+---
+# ==============================================================================
+# Ansible Playbook: Deploy Mobile Plan Recommendation Platform (Task 13)
+# ==============================================================================
+- name: Deploy Containerized Mobile Plan Recommendation Platform
+  hosts: mpr_servers
+  gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
+
+  pre_tasks:
+    - name: Deployment Banner
+      ansible.builtin.debug:
+        msg:
+          - "======================================================================"
+          - "  DEPLOYING CONTAINERIZED MOBILE PLAN RECOMMENDATION PLATFORM"
+          - "  Target Environment: {{ deployment_environment | default('production') }}"
+          - "  Target Image:       {{ mpr_docker_image }}"
+          - "  Host Port:          {{ mpr_host_port }} (mapped to container {{ mpr_container_port }})"
+          - "  Container Name:     {{ mpr_container_name }}"
+          - "  Forbidden Ports:    {{ mpr_forbidden_ports }} (Strictly Protected)"
+          - "======================================================================"
+
+  roles:
+    - role: ../roles/mpr_platform
+
+  post_tasks:
+    - name: Deployment Completion Summary
+      ansible.builtin.debug:
+        msg:
+          - "======================================================================"
+          - "  DEPLOYMENT COMPLETED SUCCESSFULLY"
+          - "  Container Name:     {{ mpr_container_name }}"
+          - "  Published Endpoint: http://localhost:{{ mpr_host_port }}/"
+          - "  Health Check:       http://localhost:{{ mpr_host_port }}/actuator/health"
+          - "  Status:             UP"
+          - "======================================================================"

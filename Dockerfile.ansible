@@ -1,0 +1,16 @@
+# Dockerfile for running Ansible on Windows 11 via Docker Desktop Container Runner
+FROM alpine:latest
+
+# Install Ansible-core and essential tooling
+RUN apk add --no-cache \
+    ansible-core \
+    curl \
+    bash \
+    openssh-client \
+    ca-certificates \
+    py3-pip \
+    docker-cli
+
+WORKDIR /workspace
+
+CMD ["ansible-playbook", "--version"]

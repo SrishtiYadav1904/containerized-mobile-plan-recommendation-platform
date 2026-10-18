@@ -1025,13 +1025,40 @@ flowchart TD
 ---
 
 ### Task 13 — Configuration Management Script
-- **Task Objective:** Author an Ansible playbook to automate server provisioning, package installation, runtime configuration, and directory setup.
-- **What Was Implemented:** *Not started yet.*
-- **Why It Matters:** Eliminates manual server configuration and ensures infrastructure setup is documented, version-controlled, and automated ("Infrastructure as Code").
-- **Completion Status:** **Not started**.
+- **Task Objective:** Author an Ansible inventory and YAML playbook to automate server provisioning, package installation, runtime configuration, directory setup, port policy enforcement, and post-deployment health verification on Windows 11 host using a documented supported approach (Docker Desktop / container runner and WSL2).
+- **What Was Implemented:**
+  1. **Ansible Architecture & Execution Environment:** Established standard modular structure (`ansible.cfg`, `inventories/production`, `inventories/local`, `group_vars/all.yml`, `roles/mpr_platform/`, and `playbooks/deploy-mpr-platform.yml`). Built a lightweight container runner (`Dockerfile.ansible` building `mpr-ansible-runner:latest` with Alpine, `ansible-core 2.21.0`, `python 3.14.8`, `docker-cli 29.8.2`, `curl`, and `openssh-client`) and PowerShell execution wrapper (`scripts/run-ansible.ps1`). This directly addresses the Windows 11 host environment without pretending Ansible runs natively in PowerShell.
+  2. **Inventory Management:** Created `inventories/production/hosts.yml` with placeholder IP `192.168.1.100`, deployment user `deployer`, SSH key path placeholders, and security warnings against committing secrets. Created `inventories/local/hosts.yml` for local runner and CI/CD validation.
+  3. **Global Parameterization & Secret Protection (`group_vars/all.yml`):** Parameterized application names, Docker image tags (`srishtiyadav1904/...:latest`), host port 8085, container port 8080, deployment directories (`/opt/mpr-platform`), ownership permissions (`0755` dirs, `0640` files, `0600` secrets), and safe secret lookups via environment/vault/Jenkins (`lookup('env', 'MPR_DB_PASSWORD')`).
+  4. **Modular Role Implementation (`roles/mpr_platform/`):**
+     - `validate_ports.yml`: Enforces port assertion that `mpr_host_port` (8085) is not in forbidden ports `[8072, 8081, 8082]` and fails execution instantly if violated.
+     - `prerequisites.yml`: Verifies Docker CLI and daemon availability; provisions OS packages for standard Linux distributions (`apt`, `dnf`, `yum`); creates dedicated system service user `mpruser` and group `mprgroup`.
+     - `directories.yml`: Idempotently creates `/opt/mpr-platform`, `/opt/mpr-platform/config`, and `/opt/mpr-platform/logs` with `0755` permissions.
+     - `configuration.yml`: Templates `mpr-platform.env` from `mpr-platform.env.j2` with restrictive `0600` permissions so credentials cannot be read by unauthorized users.
+     - `deploy_container.yml`: Idempotently inspects `mpr-platform-container`. If already running with the target image and port, preserves it without destructive downtime; otherwise, safely recreates only `mpr-platform-container`. Strictly leaves foreign containers (`driving-school-container`) untouched.
+     - `health_check.yml`: Executes health checks against `http://<host>:8085/actuator/health` using `ansible.builtin.uri` with `curl` fallback, polling up to 90 seconds (18 retries × 5s) and verifying `status: UP`.
+  5. **Playbook & Master Entrypoint:** `playbooks/deploy-mpr-platform.yml` and `playbooks/site.yml` providing execution banners, role invocation, and deployment summaries.
+- **Why It Matters:** Eliminates manual server configuration drift, documents infrastructure as code, enforces strict port security before binding, and ensures idempotent, automated deployment across target nodes.
+- **Evidence / Outputs:**
+  - Container runner build: `docker images mpr-ansible-runner:latest` (ID `ff9482bb1625`)
+  - Syntax check: `.\scripts\run-ansible.ps1 -Action SyntaxCheck` (exit code 0)
+  - Inventory validation: `.\scripts\run-ansible.ps1 -Action InventoryGraph` and `InventoryList` (exit code 0)
+  - Port violation protection test: `.\scripts\run-ansible.ps1 -Action CheckMode -ExtraArgs "-e mpr_host_port=8081"` (Correctly caught and failed: `CRITICAL PORT POLICY VIOLATION`)
+  - Check mode dry-run: `.\scripts\run-ansible.ps1 -Action CheckMode -Inventory "inventories/local/hosts.yml"` (`ok=23 changed=4 failed=0`)
+  - Live playbook execution: `.\scripts\run-ansible.ps1 -Action RunPlaybook -Inventory "inventories/local/hosts.yml"` (`ok=30 changed=5 failed=0`, verified `UP`)
+  - Official task report: `docs/task-reports/task-13.md`
+- **Completion Status:** **Completed** (Playbook validated, port safety enforced, idempotent container deployment and health checks verified).
 - **Viva Preparation:**
-  - *Q1: What is Ansible?*  
-    *Answer:* An open-source, agentless configuration management and automation tool that uses declarative YAML playbooks to configure servers over SSH or local connections.
+  - *Q1: What is Ansible and how is it executed on a Windows 11 host in our project?*  
+    *Answer:* Ansible is an open-source, agentless configuration management and automation engine that executes declarative YAML playbooks. Because Ansible control nodes require a POSIX environment, Ansible does not run natively directly in Windows PowerShell. In our project, we documented and implemented a supported containerized runner architecture (`Dockerfile.ansible` building `mpr-ansible-runner:latest` with Alpine, `ansible-core 2.21.0`, Python 3.14, and `docker-cli 29.8.2`). Our PowerShell wrapper `scripts/run-ansible.ps1` mounts the project workspace and Docker socket to execute Ansible syntax checks, dry-runs, and playbooks seamlessly on Windows 11 without making false claims about native PowerShell execution.
+  - *Q2: How does our Ansible playbook enforce the non-negotiable port policy?*  
+    *Answer:* In `ansible/roles/mpr_platform/tasks/validate_ports.yml`, an `ansible.builtin.assert` task validates that `mpr_host_port` (default 8085) is strictly not in `mpr_forbidden_ports: [8072, 8081, 8082]` before any directories are created or containers are launched. When tested with `-e mpr_host_port=8081`, the assertion immediately failed with `CRITICAL PORT POLICY VIOLATION`, halting execution and protecting running host services from port conflict.
+  - *Q3: What makes our Ansible playbook idempotent?*  
+    *Answer:* Idempotency ensures that running the playbook multiple times produces the same system state without redundant side effects or unnecessary service restarts. For example, `directories.yml` checks directory existence and permissions before making changes; `configuration.yml` templates `mpr-platform.env` and notifies a restart handler only when file content actually changes; and `deploy_container.yml` inspects `mpr-platform-container`—if the container is already running with the target image and port 8085, it skips destructive container removal and recreation.
+  - *Q4: How does our playbook secure sensitive credentials like database passwords and JWT secrets?*  
+    *Answer:* In accordance with strict security standards, no plain-text passwords or secret keys are committed to Git. In `ansible/group_vars/all.yml`, secrets use dynamic Jinja2 lookups falling back to environment variables or Jenkins vault injection (`lookup('env', 'MPR_DB_PASSWORD')`). Furthermore, the generated configuration file `/opt/mpr-platform/config/mpr-platform.env` is written with restrictive file permissions `0600` (`-rw-------`), ensuring only the dedicated application service user (`mpruser`) can read it.
+  - *Q5: How does the post-deployment health check verify that the application container is ready to serve traffic?*  
+    *Answer:* In `ansible/roles/mpr_platform/tasks/health_check.yml`, the `ansible.builtin.uri` module polls `http://<host>:8085/actuator/health` up to 18 times with a 5-second delay (90-second timeout). It checks that the HTTP status code is 200 and that the payload body contains `"status":"UP"`. If the endpoint fails to return `UP` within the timeout, the task logs diagnostics and fails the deployment, preventing promotion of an unhealthy node.
 
 ---
 
@@ -1060,10 +1087,10 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `feature/12-jenkins-docker-cd` (active, clean development branch) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins`, `feature/11-docker-containerization` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Active Local Branch** | `feature/13-ansible-config-management` (active, clean development branch) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins`, `feature/11-docker-containerization`, `feature/12-jenkins-docker-cd` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
-| **Latest Commit SHA** | Verified commit on `develop` (`93c7b59`) and `feature/12-jenkins-docker-cd` (`22013c2`) | `git log -n 1 --oneline` |
+| **Latest Commit SHA** | Verified commit on `develop` (`64c35df`) and `main` (`64c35df`) | `git log -n 1 --oneline` |
 | **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
 | **Test Suite Results** | **35 tests run, 0 failures, 0 errors, 0 skipped.** Full suite includes 30 unit/slice tests (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]) PLUS 5 Selenium WebDriver end-to-end user journeys (`MobilePlanSeleniumTests` [5]) covering RBAC, search/filter, plan creation draft, recommendation calculation, and status approval lifecycle. | Maven Surefire Reports (`target/surefire-reports/`) |
@@ -1072,9 +1099,9 @@ flowchart TD
 | **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (55.5 MB), `deployment-state.json` (rollback metadata), test failure screenshots, surefire test reports | Jenkins Build #18 Archives on disk |
 | **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}`. | `http://localhost:8084/mpr-platform/actuator/health` |
 | **Docker Status** | **Continuous Deployment Active:** Container `mpr-platform-container` (`61da329c6b16`) automatically deployed by Jenkins Build #18 to host port `8085` (internal `8080`). Status: `Up (healthy)`, non-root `USER 1001`. Native Docker healthcheck and Spring Actuator health returning HTTP 200 `UP`. Machine-readable rollback metadata tracked in `deployment-state.json`. Unrelated containers untouched. | `http://localhost:8085/actuator/health`, `docs/docker-guide.md`, `docs/task-reports/task-12.md` |
-| **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
+| **Ansible Status** | **Completed & Verified:** Modular Ansible architecture (`ansible.cfg`, `inventories/`, `group_vars/`, `roles/mpr_platform/`, `playbooks/deploy-mpr-platform.yml`), containerized runner (`Dockerfile.ansible`, `mpr-ansible-runner:latest`), PowerShell wrapper (`scripts/run-ansible.ps1`). Validated syntax check, inventory graph/list, port 8085 assertion (rejects forbidden 8072, 8081, 8082), dry-run check mode (`ok=23 changed=4`), and live local execution (`ok=30 changed=5`) with health verification `{"status":"UP"}`. | `ansible/`, `scripts/run-ansible.ps1`, `docs/task-reports/task-13.md` |
 | **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Docker Container Host Port: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
-| **Known Blockers** | None. Tasks 1–12 complete, automated, tested, containerized, continuously deployed, and published. | `TASK-TRACKER.md` |
+| **Known Blockers** | None. Tasks 1–13 complete, automated, tested, containerized, continuously deployed, managed with Ansible, and published. | `TASK-TRACKER.md` |
 
 ---
 
@@ -1170,22 +1197,47 @@ When demonstrating the project in its current state (Tasks 1–12 Completed — 
      - Open browser: `http://localhost:8085/plans` -> Full responsive catalogue view with soft pink/lilac theme.
      - Open browser: `http://localhost:8085/login` -> Authentication page.
 
+### Step 6: Demonstrate Ansible Configuration Management & Port Safety Assertion
+- **Action:** Open PowerShell terminal.
+- **Demonstrate:**
+  1. **Validate Playbook Syntax via Container Runner:**
+     ```powershell
+     .\scripts\run-ansible.ps1 -Action SyntaxCheck
+     ```
+     Show exit code 0 and syntax validation of `playbooks/deploy-mpr-platform.yml`.
+  2. **Inspect Production Inventory Graph:**
+     ```powershell
+     .\scripts\run-ansible.ps1 -Action InventoryGraph
+     ```
+     Show structured host inventory hierarchy (`@all -> @mpr_servers -> mpr-prod-node-01`).
+  3. **Demonstrate Port Safety Policy Rejection:**
+     ```powershell
+     .\scripts\run-ansible.ps1 -Action CheckMode -ExtraArgs "-e mpr_host_port=8081"
+     ```
+     Show how the playbook immediately halts with `CRITICAL PORT POLICY VIOLATION` when attempting to bind forbidden port 8081.
+  4. **Execute Live Playbook with Idempotent Verification:**
+     ```powershell
+     .\scripts\run-ansible.ps1 -Action RunPlaybook -Inventory "inventories/local/hosts.yml"
+     ```
+     Show all 6 deployment steps execute successfully (`ok=30 changed=5 failed=0`), container idempotency respected, and health check verified `UP`.
+
 ---
 
 ## Section G: Next Steps
 
-### Immediate Next Task: Task 13 — Configuration Management Script (Ansible)
+### Immediate Next Task: Task 14 — Automated Rollback and Self-Healing
 
-- **Goal:** Author an automated configuration management script / Ansible playbook to manage server provisioning, runtime dependencies, directory structure, and configuration files for the Containerized Mobile Plan Recommendation Platform.
+- **Goal:** Leverage the machine-readable deployment metadata in `deployment-state.json`, container health probes, and automated failure detection to implement automated rollback and self-healing.
 - **Prerequisites:**
   - Automated Jenkins-Docker Continuous Deployment verified (Satisfied ✅).
-  - Standalone Tomcat and Docker container health checks passing (Satisfied ✅).
+  - Ansible Configuration Management playbook and runner verified (Satisfied ✅).
+  - Rollback state metadata preserved in `deployment-state.json` (Satisfied ✅).
   - Port policy: Host port 8085 and Tomcat 8084 operational; avoid 8072, 8081, 8082 (Satisfied ✅).
 - **Actions Required:**
-  1. Create feature branch `feature/13-ansible-config-management` from `develop`.
-  2. Structure Ansible automation directory (`ansible/playbooks`, `ansible/roles`, `ansible/inventory`).
-  3. Author playbook for provisioning runtime environment, Tomcat setup, directory structure, and configuration files.
-  4. Document configuration management execution in `docs/task-reports/task-13.md`.
-  5. Update `TASK-TRACKER.md` and `PROJECT-PROGRESS.md`.
+  1. Create feature branch `feature/14-automated-rollback` from `develop`.
+  2. Author automated rollback script (`scripts/rollback-deployment.ps1`) capable of reading `deployment-state.json`, stopping a degraded container, restoring the previous known-good image tag, and verifying restored health.
+  3. Extend pipeline or health monitors to trigger automated rollback upon probe failure.
+  4. Simulate a failure scenario to prove rollback restores operational service on port 8085.
+  5. Document outcomes in `docs/task-reports/task-14.md`, update `TASK-TRACKER.md` and `PROJECT-PROGRESS.md`.
   6. Open and merge Pull Request into `develop` and sync `main`.
 

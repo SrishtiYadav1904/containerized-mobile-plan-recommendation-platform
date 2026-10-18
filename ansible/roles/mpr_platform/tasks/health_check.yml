@@ -1,0 +1,55 @@
+# Post-deployment health-check verification
+- name: Display health check target endpoint
+  ansible.builtin.debug:
+    msg: "Checking application health at: {{ mpr_health_endpoint_url }}"
+
+- name: Wait for application health endpoint to return UP
+  ansible.builtin.uri:
+    url: "{{ mpr_health_endpoint_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: health_result
+  until:
+    - health_result.status == 200
+    - "'UP' in health_result.content"
+  retries: "{{ mpr_health_retry_count }}"
+  delay: "{{ mpr_health_retry_delay_seconds }}"
+  ignore_errors: true
+
+- name: Fallback health check using curl if uri module is unavailable or network isolated
+  ansible.builtin.command:
+    cmd: "curl -sS -f {{ mpr_health_endpoint_url }}"
+  register: curl_health_result
+  until:
+    - curl_health_result.rc == 0
+    - "'UP' in curl_health_result.stdout"
+  retries: "{{ mpr_health_retry_count }}"
+  delay: "{{ mpr_health_retry_delay_seconds }}"
+  when: health_result is failed
+  ignore_errors: true
+  changed_when: false
+
+- name: Evaluate final health status
+  ansible.builtin.set_fact:
+    deployment_healthy: >-
+      {{
+        (ansible_check_mode | bool) or
+        (health_result is succeeded and 'UP' in (health_result.content | default(''))) or
+        ((curl_health_result.rc | default(-1)) == 0 and 'UP' in (curl_health_result.stdout | default('')))
+      }}
+
+- name: Fail deployment if health check did not pass
+  ansible.builtin.fail:
+    msg: >-
+      HEALTH CHECK FAILED: The application at {{ mpr_health_endpoint_url }} did not reach UP status within {{ mpr_health_timeout_seconds }} seconds.
+      Please check docker logs using: docker logs --tail 100 {{ mpr_container_name }}
+  when: not (deployment_healthy | bool)
+
+- name: Report successful health check verification
+  ansible.builtin.debug:
+    msg:
+      - "HEALTH CHECK PASSED: {{ mpr_health_endpoint_url }}"
+      - "Status: UP"
+      - "Host Port: {{ mpr_host_port }}"
+      - "Container: {{ mpr_container_name }}"

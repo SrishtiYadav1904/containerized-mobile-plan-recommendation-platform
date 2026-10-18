@@ -1,0 +1,20 @@
+# Deployment directory layout and permissions setup
+- name: Ensure base deployment directories exist with correct permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "{{ mpr_dir_mode }}"
+    recurse: false
+  loop:
+    - "{{ mpr_deploy_dir }}"
+    - "{{ mpr_config_dir }}"
+    - "{{ mpr_logs_dir }}"
+  become: "{{ (ansible_system | default('Linux')) == 'Linux' and (ansible_user_id | default('root')) != 'root' }}"
+  ignore_errors: true
+
+- name: Audit created directory structures
+  ansible.builtin.debug:
+    msg:
+      - "Deploy Directory: {{ mpr_deploy_dir }}"
+      - "Config Directory: {{ mpr_config_dir }}"
+      - "Logs Directory:   {{ mpr_logs_dir }}"

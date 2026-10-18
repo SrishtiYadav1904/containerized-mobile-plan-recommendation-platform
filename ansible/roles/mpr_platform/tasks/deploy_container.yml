@@ -1,0 +1,54 @@
+# Idempotent container lifecycle management
+# Avoids destructive cleanup and strictly preserves unrelated containers (e.g., driving-school-container)
+
+- name: Inspect existing application container
+  ansible.builtin.command:
+    cmd: "docker inspect --format {% raw %}'{{.State.Status}}|{{.Config.Image}}'{% endraw %} {{ mpr_container_name }}"
+  register: existing_container_info
+  failed_when: false
+  changed_when: false
+
+- name: Parse existing container state
+  ansible.builtin.set_fact:
+    container_exists: "{{ existing_container_info.rc == 0 }}"
+    container_running: "{{ existing_container_info.rc == 0 and 'running' in existing_container_info.stdout }}"
+    container_image_match: "{{ existing_container_info.rc == 0 and mpr_docker_image in existing_container_info.stdout }}"
+
+- name: Display detected container state
+  ansible.builtin.debug:
+    msg:
+      - "Container Exists:       {{ container_exists }}"
+      - "Container Running:      {{ container_running }}"
+      - "Image Matches Desired:  {{ container_image_match }}"
+      - "Target Desired Image:   {{ mpr_docker_image }}"
+
+- name: Stop and remove outdated or non-matching application container
+  ansible.builtin.command:
+    cmd: "docker rm -f {{ mpr_container_name }}"
+  when:
+    - container_exists | bool
+    - not (container_running and container_image_match)
+  register: container_cleanup
+  changed_when: container_cleanup.rc == 0
+
+- name: Launch idempotent application container
+  ansible.builtin.command:
+    cmd: >-
+      docker run -d
+      --name {{ mpr_container_name }}
+      -p {{ mpr_host_port }}:{{ mpr_container_port }}
+      --restart {{ mpr_container_restart_policy }}
+      {{ mpr_docker_image }}
+  when: not container_exists or not (container_running and container_image_match)
+  register: container_launch
+  changed_when: container_launch.rc == 0
+
+- name: Confirm container is running
+  ansible.builtin.command:
+    cmd: "docker ps --filter name={{ mpr_container_name }} --format {% raw %}'table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}'{% endraw %}"
+  register: running_containers_list
+  changed_when: false
+
+- name: Output container runtime table
+  ansible.builtin.debug:
+    msg: "{{ running_containers_list.stdout_lines }}"
