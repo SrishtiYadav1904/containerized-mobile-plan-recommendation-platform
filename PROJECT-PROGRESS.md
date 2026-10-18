@@ -844,15 +844,101 @@ flowchart TD
 ---
 
 ### Task 11 — Docker Image and Container Lifecycle
-- **Task Objective:** Create a root-level `Dockerfile` using `tomcat:10.1-jdk17`, package the WAR inside the container, configure container port 8080 mapped to host port 8085, and demonstrate image building and container management.
-- **What Was Implemented:** *Not started yet.*
-- **Why It Matters:** Containers bundle application binaries, runtime dependencies, and system libraries together, guaranteeing identical behavior across development, testing, and production servers.
-- **Completion Status:** **Not started**.
+- **Task Objective:** Author a production-grade `Dockerfile` and `.dockerignore` for the approved Java 17 / Apache Tomcat 10.1 stack, enforce non-root user execution (`USER 1001`), add automated container health checking probing `/actuator/health`, build and tag local Docker images (`:v0.1.0` and `:latest`), publish container on host port 8085 (verifying 8085 is free and strictly avoiding forbidden ports 8072, 8081, 8082), demonstrate full container lifecycle operations (inspect, logs, stop, start/restart, remove) while safeguarding unrelated containers, and document Docker operations in `docs/docker-guide.md` and `docs/task-reports/task-11.md`.
+- **What Was Implemented:**
+  1. **Base Image Selection:** Selected official `tomcat:10.1-jre17-temurin` based on Debian slim, providing a lean, cryptographically signed, and stable runtime with Eclipse Temurin Java 17 and Apache Tomcat 10.1.
+  2. **Security Hardening (Non-Root User):** Created a dedicated, unprivileged system user `appuser` (UID 1001, GID 1001), transferred ownership of all Tomcat directories (`/usr/local/tomcat`) to `appuser:appgroup`, purged default Tomcat web applications (`examples`, `docs`, `host-manager`), and set runtime execution to `USER 1001`.
+  3. **Artifact Packaging and Dual Deployment:** Re-packaged the verified production WAR (`target/containerized-mobile-plan-recommendation-platform.war`, 55.5 MB) via `.\mvnw.cmd -B package -DskipTests`. In the Dockerfile, copied the WAR as both `ROOT.war` (enabling root-path access `http://localhost:8085/actuator/health` and direct UI) and `mpr-platform.war` (enabling context-path access `http://localhost:8085/mpr-platform/`), ensuring complete compatibility across testing tools and browsers.
+  4. **Build Context Optimization (.dockerignore):** Authored `.dockerignore` to exclude `.git`, `.github`, `src/`, test classes, build caches, and documentation, ensuring only the finalized `target/*.war` binary is transferred into the Docker daemon build context.
+  5. **Container Healthcheck Instruction:** Embedded native Docker `HEALTHCHECK` with curl probing `http://localhost:8080/actuator/health` with `--interval=20s --timeout=5s --start-period=40s --retries=3`.
+  6. **Image Build & Multi-Tagging:** Built Docker image ID `b85b15d7a8b4` (content size 244 MB, uncompressed 722 MB) tagged with:
+     - `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0`
+     - `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:latest`
+     - `containerized-mobile-plan-recommendation-platform:v0.1.0`
+     - `containerized-mobile-plan-recommendation-platform:latest`
+  7. **Host Port Safeguards & Binding:** Verified host port `8085` was completely free via `netstat -ano | findstr :8085`. Mapped container port 8080 to host port 8085 (`-p 8085:8080`), strictly leaving forbidden ports 8072, 8081, and 8082 untouched.
+  8. **Container Lifecycle Demonstration:**
+     - `docker run -d -p 8085:8080 --name mpr-platform-container --restart unless-stopped srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0`
+     - `docker inspect`: Verified ID `8c13dabdd198`, status `running (healthy)`, network bridge IP `172.17.0.2`, user `1001`.
+     - `docker logs`: Verified Spring Boot 3.2.5 and Tomcat 10.1 initialization in 33.25 seconds.
+     - `docker stop`: Clean container shutdown with SIGTERM (exit code 143).
+     - `docker start`: Fast container resumption.
+     - `docker restart`: Clean container restart.
+     - `docker rm`: Verified safe container deletion and re-creation without affecting unrelated containers (`driving-school-container`).
+  9. **Endpoint & Health Verification:** Confirmed `curl http://localhost:8085/actuator/health` returns HTTP 200 with `{"status":"UP","components":{"db":{"status":"UP"},"diskSpace":{"status":"UP"},"ping":{"status":"UP"}}}`. Confirmed `curl -I http://localhost:8085/plans` and `http://localhost:8085/login` return HTTP 200.
+  10. **Comprehensive Documentation:** Authored user guide `docs/docker-guide.md` and milestone report `docs/task-reports/task-11.md`.
+- **Why It Matters:** Eliminates "it works on my machine" discrepancies by packaging the entire runtime stack (OS, JRE, Tomcat, application binary) into an immutable, versioned container image that runs identically across development, CI/CD pipelines, and production clouds.
+- **How It Works:** Docker uses Linux namespaces and cgroups to isolate the application process; port mapping bridges host traffic on 8085 to container port 8080; the Docker daemon polls `/actuator/health` and marks the container `healthy`.
+- **Tools Used:** Docker Desktop 29.8.2 (WSL2 Linux Engine), Apache Tomcat 10.1 (`tomcat:10.1-jre17-temurin`), Eclipse Temurin JRE 17, Spring Boot Actuator, PowerShell 5.1, Git, GitHub CLI.
+- **Important Files:**
+  - `Dockerfile`: Production image specification with non-root user and healthcheck.
+  - `.dockerignore`: Build context optimization rules.
+  - `docs/docker-guide.md`: Comprehensive Docker architecture, tagging, and command guide.
+  - `docs/task-reports/task-11.md`: Official Task 11 milestone completion report.
+- **Commands Executed:**
+  ```powershell
+  # 1. Package WAR without running unit tests (already verified in Task 10)
+  .\mvnw.cmd -B package -DskipTests
+
+  # 2. Build and tag Docker images
+  docker build -t srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0 -t srishtiyadav1904/containerized-mobile-plan-recommendation-platform:latest .
+
+  # 3. Verify host port 8085 is completely free
+  netstat -ano | findstr :8085
+
+  # 4. Launch container with port mapping and healthcheck
+  docker run -d -p 8085:8080 --name mpr-platform-container --restart unless-stopped srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0
+
+  # 5. Inspect container status and health
+  docker inspect --format='{{.State.Status}} ({{.State.Health.Status}})' mpr-platform-container
+  docker logs --tail 25 mpr-platform-container
+
+  # 6. Verify health endpoint and web application responses
+  curl -s http://localhost:8085/actuator/health
+  curl -I http://localhost:8085/plans
+
+  # 7. Lifecycle validation (stop, start, restart, removal)
+  docker stop mpr-platform-container
+  docker start mpr-platform-container
+  docker restart mpr-platform-container
+  ```
+- **Testing and Verification:**
+  - Image built cleanly: ID `b85b15d7a8b4` (content size 244 MB, 722 MB uncompressed).
+  - Non-root execution verified: `docker inspect` confirms `User: 1001`.
+  - Native Docker Health: Transitions from `starting` to `healthy` within 40 seconds.
+  - Live HTTP endpoints on host port 8085:
+    - `GET http://localhost:8085/actuator/health` -> HTTP 200 `{"status":"UP","components":{"db":{"status":"UP"},"diskSpace":{"status":"UP"},"ping":{"status":"UP"}}}`.
+    - `GET http://localhost:8085/plans` -> HTTP 200 OK (Catalogue view with soft pink/lilac styling).
+    - `GET http://localhost:8085/login` -> HTTP 200 OK (Authentication form).
+  - Unrelated containers: `driving-school-container` preserved untouched.
+- **Evidence:**
+  - Milestone Report: [docs/task-reports/task-11.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/task-reports/task-11.md)
+  - Docker Guide: [docs/docker-guide.md](file:///e:/Downloads/containerized_mobile_plan_devops_task_pack/docs/docker-guide.md)
+  - Docker Container: `mpr-platform-container` (`8c13dabdd198`), `Up (healthy)`, port `0.0.0.0:8085->8080/tcp`
+  - Health Endpoint: `http://localhost:8085/actuator/health`
+- **Problems Encountered:**
+  - *Problem 1: Permission denied during non-root startup.*  
+    *Root Cause:* Apache Tomcat creates and modifies files in `logs/`, `temp/`, and `work/` during startup. By default, these directories were owned by root in the base image.  
+    *Resolution:* Added `groupadd -g 1001 appgroup && useradd -u 1001 -g appgroup -s /bin/bash appuser` and `chown -R appuser:appgroup /usr/local/tomcat` before declaring `USER 1001`.
+  - *Problem 2: Context path resolution between Tomcat and Spring Boot.*  
+    *Root Cause:* When accessing `http://localhost:8085/`, Tomcat looks for `ROOT`, while previous local Tomcat setup deployed under `/mpr-platform`.  
+    *Resolution:* Deployed the WAR as both `ROOT.war` and `mpr-platform.war` inside `/usr/local/tomcat/webapps/`, ensuring both direct root URLs and context-path URLs function seamlessly.
+  - *Problem 3: Docker Hub Push Authentication.*  
+    *Root Cause:* Running `docker push` requires local CLI credentials (`docker login`).  
+    *Resolution:* In accordance with security guidelines, avoid faking or storing interactive credentials; documented exact CLI push instructions (`docker login -u srishtiyadav1904 && docker push ...`) in `docs/docker-guide.md` and `docs/task-reports/task-11.md`.
+- **Remaining Work:** None for Task 11. Docker image packaging and container lifecycle management are fully verified and operational.
+- **Completion Status:** **Completed** (Image `b85b15d7a8b4` built and tagged, container `8c13dabdd198` healthy on port 8085, full lifecycle demonstrated).
 - **Viva Preparation:**
-  - *Q1: What is the difference between a Docker image and a Docker container?*  
-    *Answer:* An image is a read-only template with instructions for building a container; a container is a running, isolated instance of that image.
-  - *Q2: What does the port mapping -p 8085:8080 mean?*  
-    *Answer:* It forwards traffic hitting port 8085 on the host operating system to port 8080 inside the isolated container where the web server is listening.
+  - *Q1: Why should containerized web applications run as a non-root user (`USER 1001`) instead of the default root user?*  
+    *Answer:* Principle of Least Privilege and Defense in Depth. If an attacker discovers a remote code execution vulnerability in the application (or Tomcat) and the container runs as `root` (UID 0), the attacker gains root-level capabilities inside the container. If container isolation is breached (container escape), the attacker could compromise the underlying host OS. Running as an unprivileged user (UID 1001) confines the attacker's permissions, preventing kernel modifications, unauthorized file modifications, and privilege escalation attacks.
+  - *Q2: Explain the purpose and operation of Docker's `HEALTHCHECK` instruction.*  
+    *Answer:* `HEALTHCHECK` tells Docker how to test whether a container is actually functioning properly, rather than merely checking if its root process PID is still running. In our Dockerfile, `HEALTHCHECK --interval=20s --timeout=5s --start-period=40s --retries=3 CMD curl -f http://localhost:8080/actuator/health || exit 1` periodically invokes `curl` against the Spring Boot Actuator health endpoint. If it returns HTTP 200, Docker reports `(healthy)`. If it fails 3 consecutive times after the initial 40-second startup grace period, Docker reports `(unhealthy)`, signaling container orchestrators to restart or reroute traffic away from the container.
+  - *Q3: What is the significance of the `.dockerignore` file in container image optimization?*  
+    *Answer:* When `docker build` runs, the Docker CLI sends the build context (files in the directory) to the Docker daemon. Without `.dockerignore`, gigabytes of unnecessary data (e.g. `.git` history, IDE files, Maven build caches, source code) are transferred across the daemon socket, drastically slowing down build times, invalidating cache layers, and potentially leaking secrets or source files into the final image layers. `.dockerignore` filters out everything except the compiled binary artifact (`target/*.war`).
+  - *Q4: Explain the port mapping `-p 8085:8080` and why host port 8085 was specifically chosen.*  
+    *Answer:* `-p 8085:8080` directs incoming TCP traffic from port `8085` on the host operating system to port `8080` inside the container's isolated network namespace where Apache Tomcat listens. Port 8085 was specifically chosen per the project port allocation policy to prevent collisions with Jenkins (port 8080), standalone Tomcat (port 8084), and existing third-party system services running on forbidden ports 8072, 8081, and 8082.
+  - *Q5: How does deploying a WAR inside a Dockerized Tomcat container differ from deploying it to a standalone local Tomcat server?*  
+    *Answer:* On a standalone Tomcat server, the operating system, Java version, and Tomcat installation are external host dependencies that must be manually installed, configured, and patched, leading to environment discrepancies ("configuration drift"). Inside a Docker container, the entire operating system user space, exact JRE version (`temurin:17`), Tomcat version (`10.1`), security permissions, and application WAR are packaged together into an immutable, versioned artifact (`srishtiyadav1904/...:v0.1.0`) that guarantees identical behavior regardless of the host OS or server environment.
 
 ---
 
@@ -903,7 +989,7 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `develop` (clean, synchronized with `origin/develop` and `main`) | `git status` |
+| **Active Local Branch** | `feature/11-docker-containerization` (active, clean development branch) | `git status` |
 | **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
 | **Latest Commit SHA** | Verified commits on `develop` (`6c73fe0`) and `main` (`6c73fe0`) | `git log -n 1 --oneline` |
@@ -914,10 +1000,10 @@ flowchart TD
 | **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Verified Build #12 (defect Quality Gate caught), Build #13 (feature branch SUCCESS 35/35 passed), and Build #14 (`develop` branch SUCCESS 35/35 passed, WAR deployed to Tomcat 10.1 on port 8084, live Actuator health confirmed `UP`). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/` |
 | **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (58.2 MB), test failure screenshots (`target/screenshots/*.png`, `*.html`), JUnit XML reports | Jenkins Build #13 and #14 Archives on disk |
 | **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}`. | `http://localhost:8084/mpr-platform/actuator/health` |
-| **Docker Status** | Not started (Planned for Tasks 11 & 12). | N/A |
+| **Docker Status** | **Completed & Active:** Container `mpr-platform-container` (`8c13dabdd198`) running image `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0` (ID `b85b15d7a8b4`) on host port `8085` (internal `8080`). Status: `Up (healthy)`, non-root `USER 1001`. Native Docker healthcheck and Spring Actuator health returning HTTP 200 `UP`. Unrelated containers untouched. | `http://localhost:8085/actuator/health`, `docs/docker-guide.md`, `docs/task-reports/task-11.md` |
 | **Ansible Status** | Not started (Planned for Tasks 13 & 14). | N/A |
-| **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Planned Docker host: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
-| **Known Blockers** | None. Tasks 1–10 complete, automated, tested, deployed, and published. | `TASK-TRACKER.md` |
+| **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Docker Container Host Port: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
+| **Known Blockers** | None. Tasks 1–11 complete, automated, tested, containerized, and published. | `TASK-TRACKER.md` |
 
 ---
 
@@ -942,6 +1028,7 @@ flowchart TD
 - **Headless Browser:** A web browser that executes without a visible user interface, operated programmatically (e.g., via Selenium WebDriver) for automated integration testing in CI environments.
 - **Docker Image vs Container:** A Docker image is an immutable blueprint containing the code, runtime, system libraries, and settings. A Docker container is an isolated, executable runtime instance of that image.
 - **Port Mapping (`-p <host>:<container>`):** Directs incoming network traffic from a specific port on the host operating system to a listening port inside a Docker container.
+- **Non-Root Execution in Containers:** Enforcing execution under an unprivileged UID (e.g. `USER 1001`) inside Docker images to prevent privilege escalation or host compromise in case of application exploits.
 - **Infrastructure as Code (IaC):** The practice of provisioning and managing computing infrastructure using machine-readable configuration files (e.g., Ansible YAML playbooks) rather than physical hardware configuration or manual interactive tools.
 - **Idempotency:** A property of configuration management operations whereby applying the same operation repeatedly yields the identical result without unintended state changes.
 - **Automated Rollback:** A resilience mechanism that automatically reverts the running deployment to the previously verified, healthy container image or artifact if post-deployment health probes fail.
@@ -950,7 +1037,7 @@ flowchart TD
 
 ## Section F: End-to-End Demonstration Guide
 
-When demonstrating the project in its current state (Tasks 1–10 Completed — Full MVP, Declarative Jenkins Pipeline as Code, Selenium Continuous Testing Quality Gate, and Tomcat Server Deployment) to an evaluator:
+When demonstrating the project in its current state (Tasks 1–11 Completed — Full MVP, Declarative Jenkins Pipeline as Code, Selenium Continuous Testing Quality Gate, Tomcat Server Deployment, and Production Docker Containerization) to an evaluator:
 
 ### Step 1: Explain the Project Scope, Architecture & State Machine
 - **Action:** Open `README.md` and `PROJECT-PROGRESS.md`.
@@ -960,10 +1047,10 @@ When demonstrating the project in its current state (Tasks 1–10 Completed — 
 - **Action:** Navigate to [https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform](https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform).
 - **Explain:**
   - Show the branches (`main`, `develop`, feature branches).
-  - Show the Pull Requests: PR #1, PR #2, PR #3, PR #4, PR #5, PR #6, PR #7, all cleanly merged.
+  - Show the Pull Requests: PR #1 through PR #7 cleanly merged.
   - Show Release Tag `v0.1.0` marking the production-ready baseline.
   - Show `Jenkinsfile` at repository root demonstrating Pipeline as Code with separate test stages.
-  - Show `docs/server-deployment-guide.md` explaining Tomcat 10.1 setup and port 8084 binding.
+  - Show `docs/server-deployment-guide.md` and `docs/docker-guide.md`.
 
 ### Step 3: Demonstrate Jenkins Continuous Testing & Quality Gate Enforcement
 - **Action:** Open browser to `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/`.
@@ -979,7 +1066,7 @@ When demonstrating the project in its current state (Tasks 1–10 Completed — 
     - Click into **Test Result**: show 35/35 tests passing with 0 failures (30 unit tests + 5 Selenium user journeys).
     - Show the deployed binary WAR artifact and live Tomcat health check passing with `{"status":"UP"}`.
 
-### Step 4: Demonstrate Running Application & Features
+### Step 4: Demonstrate Running Application & Features on Standalone Tomcat
 - **Open Browser:** Navigate to `http://localhost:8084/mpr-platform/` (or `http://localhost:8080` if running standalone Spring Boot).
 - **Demonstrate:**
   1. **Catalogue View:** Browse 24 realistic Indian operator plans (Jio, Airtel, Vi, BSNL) filtered with soft pink/lilac styling.
@@ -988,22 +1075,51 @@ When demonstrating the project in its current state (Tasks 1–10 Completed — 
   4. **Executive Dashboard:** Access `/dashboard` to view real-time plan status distribution and average price metrics across operators.
   5. **Health Probe:** Visit `/actuator/health` to show `{"status":"UP"}`.
 
+### Step 5: Demonstrate Production Docker Container Lifecycle & Health Verification
+- **Action:** Open PowerShell terminal and browser.
+- **Demonstrate:**
+  1. **Inspect Running Container:**
+     ```powershell
+     docker ps --filter "name=mpr-platform-container"
+     ```
+     Show container status `Up (healthy)`, port mapping `0.0.0.0:8085->8080/tcp`, image `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:v0.1.0`.
+  2. **Verify Security Hardening (Non-Root User):**
+     ```powershell
+     docker inspect --format='{{.Config.User}}' mpr-platform-container
+     ```
+     Show that user is `1001` (`appuser`), not root.
+  3. **Show Native Docker Healthcheck:**
+     ```powershell
+     docker inspect --format='{{json .State.Health}}' mpr-platform-container
+     ```
+     Show status `healthy` with 0 failing streak.
+  4. **Test Live Endpoints on Port 8085:**
+     - Open browser or curl: `http://localhost:8085/actuator/health` -> HTTP 200 `{"status":"UP",...}`.
+     - Open browser: `http://localhost:8085/plans` -> Full responsive catalogue view with soft pink/lilac theme.
+     - Open browser: `http://localhost:8085/login` -> Authentication page.
+  5. **Show Container Logs & Graceful Lifecycle:**
+     ```powershell
+     docker logs --tail 20 mpr-platform-container
+     ```
+     Explain how the container can be cleanly stopped, started, and restarted without host dependencies.
+
 ---
 
 ## Section G: Next Steps
 
-### Immediate Next Task: Task 11 — Docker Image and Container Lifecycle
+### Immediate Next Task: Task 12 — Jenkins-Docker Continuous Deployment
 
-- **Goal:** Author a multi-stage `Dockerfile` based on `tomcat:10.1-jdk17` or `eclipse-temurin:17-jre`, package the application WAR inside the container, configure container port `8080` mapped to host port `8085` (strictly avoiding forbidden ports `8072`, `8081`, `8082`), validate image building, inspect image layers and size, run and manage container lifecycle (start, inspect, stop, logs), verify `/actuator/health` on `http://localhost:8085/actuator/health`, and push the tagged image to Docker Hub under `srishtiyadav1904`.
+- **Goal:** Integrate Docker image building, tagging, container deployment, and health verification directly into the Jenkins Declarative Pipeline (`Jenkinsfile`).
 - **Prerequisites:**
-  - Automated test suite (35/35 passing) and packaged WAR verified in CI (Satisfied ✅).
-  - Continuous Testing & Quality Gate enforced in Jenkins (Satisfied ✅).
-  - Port policy: Host port `8085` available; avoid `8072`, `8081`, `8082` (Satisfied ✅).
+  - Production `Dockerfile` and `.dockerignore` verified (Satisfied ✅).
+  - Local image tags `:v0.1.0` and `:latest` verified (Satisfied ✅).
+  - Port policy: Host port `8085` allocated to Docker container; avoid `8072`, `8081`, `8082` (Satisfied ✅).
+  - Jenkins CI job running successfully on port `8080` (Satisfied ✅).
 - **Actions Required:**
-  1. Create feature branch `feature/11-docker-containerization` from `develop`.
-  2. Author production-ready `Dockerfile` and `.dockerignore`.
-  3. Build Docker image `srishtiyadav1904/containerized-mobile-plan-recommendation-platform:latest` and `:v0.1.0`.
-  4. Run container on host port `8085`: `docker run -d -p 8085:8080 --name mpr-platform ...`.
-  5. Verify health check on `http://localhost:8085/actuator/health`.
-  6. Document container lifecycle and push to Docker Hub.
-  7. Update `TASK-TRACKER.md`, `docs/task-reports/task-11.md`, and `PROJECT-PROGRESS.md`.
+  1. Create feature branch `feature/12-jenkins-docker-cd` from `develop`.
+  2. Extend `Jenkinsfile` with a dedicated `Build Docker Image` stage and a `Deploy Docker Container` stage.
+  3. Automate stopping and replacing any previous container version cleanly on host port 8085.
+  4. Incorporate automated post-deployment health check probing `http://localhost:8085/actuator/health`.
+  5. Trigger and verify end-to-end Jenkins pipeline build with containerized CD.
+  6. Document the Jenkins Docker CD pipeline in `docs/task-reports/task-12.md`.
+  7. Open and merge Pull Request into `develop` and sync `main`.
