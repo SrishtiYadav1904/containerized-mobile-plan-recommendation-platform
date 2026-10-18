@@ -1,7 +1,10 @@
 param(
     [string]$BranchName = "develop",
     [string]$AppPort = "8084",
-    [bool]$DeployWar = $true
+    [string]$DeployWar = "true",
+    [string]$DeployDocker = "true",
+    [string]$DockerHostPort = "8085",
+    [string]$PushDockerHub = "false"
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,7 +13,7 @@ $JobName = "Mobile-Plan-Recommendation-CI"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "Triggering Jenkins Pipeline: $JobName" -ForegroundColor Cyan
-Write-Host "Branch: $BranchName | Port: $AppPort | DeployWar: $DeployWar" -ForegroundColor Cyan
+Write-Host "Branch: $BranchName | AppPort: $AppPort | DeployWar: $DeployWar | DeployDocker: $DeployDocker (Port $DockerHostPort)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Obtain Crumb and Web Session
@@ -23,7 +26,7 @@ $crumbValue = $crumbRes.crumb
 Write-Host "[JENKINS] Acquired CSRF Crumb: $crumbHeader = $crumbValue" -ForegroundColor Gray
 
 # 2. Trigger Parameterized Build
-$buildUrl = "$JenkinsUrl/job/$JobName/buildWithParameters?BRANCH_NAME=$BranchName&APP_PORT=$AppPort&DEPLOY_WAR=$($DeployWar.ToString().ToLower())"
+$buildUrl = "$JenkinsUrl/job/$JobName/buildWithParameters?BRANCH_NAME=$BranchName&APP_PORT=$AppPort&DEPLOY_WAR=$($DeployWar.ToString().ToLower())&DEPLOY_DOCKER=$($DeployDocker.ToString().ToLower())&DOCKER_HOST_PORT=$DockerHostPort&PUSH_DOCKER_HUB=$($PushDockerHub.ToString().ToLower())"
 $headers = @{
     $crumbHeader = $crumbValue
 }

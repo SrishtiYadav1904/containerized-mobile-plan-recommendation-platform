@@ -4,6 +4,8 @@ param(
     [int]$Port = 8084,
 
     [Parameter(Mandatory = $false)]
+    [AllowEmptyString()]
+    [AllowNull()]
     [string]$ContextPath = "mpr-platform",
 
     [Parameter(Mandatory = $false)]
@@ -13,7 +15,12 @@ param(
     [int]$RetryIntervalSeconds = 3
 )
 
-$targetUrl = "http://localhost:$Port/$ContextPath/actuator/health"
+$cleanContext = if ($ContextPath -and $ContextPath.Trim() -ne "" -and $ContextPath.Trim() -ne "/" -and $ContextPath.Trim().ToLower() -ne "root" -and $ContextPath.Trim().ToLower() -ne "none") {
+    $ContextPath.Trim("/").Trim() + "/"
+} else {
+    ""
+}
+$targetUrl = "http://localhost:$Port/$($cleanContext)actuator/health"
 Write-Host "=========================================================="
 Write-Host "[HEALTH CHECK] Target URL: $targetUrl"
 Write-Host "[HEALTH CHECK] Timeout: ${TimeoutSeconds}s, Interval: ${RetryIntervalSeconds}s"
