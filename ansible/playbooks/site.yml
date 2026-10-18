@@ -1,0 +1,4 @@
+---
+# Site entrypoint playbook
+- name: Site Playbook
+  ansible.builtin.import_playbook: deploy-mpr-platform.yml

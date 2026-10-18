@@ -1,0 +1,14 @@
+# Environment configuration and templating
+- name: Deploy application environment file from template
+  ansible.builtin.template:
+    src: "mpr-platform.env.j2"
+    dest: "{{ mpr_config_dir }}/mpr-platform.env"
+    mode: "{{ mpr_secret_file_mode }}"
+    backup: true
+  notify: Restart mpr platform container
+  become: "{{ (ansible_system | default('Linux')) == 'Linux' and (ansible_user_id | default('root')) != 'root' }}"
+  ignore_errors: true
+
+- name: Confirm configuration file status
+  ansible.builtin.debug:
+    msg: "Environment configuration written to {{ mpr_config_dir }}/mpr-platform.env with mode {{ mpr_secret_file_mode }}."

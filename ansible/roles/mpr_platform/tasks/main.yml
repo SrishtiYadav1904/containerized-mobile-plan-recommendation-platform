@@ -1,0 +1,18 @@
+# Main entry point for role mpr_platform
+- name: Step 1 - Enforce port policies and validate safe port bindings
+  ansible.builtin.include_tasks: validate_ports.yml
+
+- name: Step 2 - Verify system prerequisites and Docker runtime availability
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: Step 3 - Create deployment directory structures and permissions
+  ansible.builtin.include_tasks: directories.yml
+
+- name: Step 4 - Generate application environment configuration
+  ansible.builtin.include_tasks: configuration.yml
+
+- name: Step 5 - Deploy container idempotently on port 8085
+  ansible.builtin.include_tasks: deploy_container.yml
+
+- name: Step 6 - Verify post-deployment health check on port 8085
+  ansible.builtin.include_tasks: health_check.yml
