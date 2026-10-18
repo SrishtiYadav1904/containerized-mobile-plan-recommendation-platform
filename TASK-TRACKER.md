@@ -10,7 +10,7 @@
 | 6 | MVP Completion and Git Collaboration | Completed | `docs/task-reports/task-06.md` (PR #2 merged, Tag `v0.1.0`) |
 | 7 | Jenkins Installation and Continuous Integration Job | Completed | `docs/task-reports/task-07.md` (Build #2 SUCCESS, 30 tests passed, WAR archived) |
 | 8 | Pipeline as Code and Server Deployment | Completed | `docs/task-reports/task-08.md` (Jenkinsfile in SCM, Build #7 SUCCESS, deployed to Tomcat 10.1 on port 8084) |
-| 9 | Selenium Test Design and Local Execution | Not started | `docs/task-reports/task-09.md` |
+| 9 | Selenium Test Design and Local Execution | Completed | `docs/task-reports/task-09.md` (5 UI journeys passed, POM pattern, headless Chrome, screenshot failure diagnostics) |
 | 10 | Continuous Testing in Jenkins | Not started | `docs/task-reports/task-10.md` |
 | 11 | Docker Image and Container Lifecycle | Not started | `docs/task-reports/task-11.md` |
 | 12 | Jenkins-Docker Continuous Deployment | Not started | `docs/task-reports/task-12.md` |
