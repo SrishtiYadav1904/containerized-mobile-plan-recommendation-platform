@@ -53,7 +53,20 @@ $tagArgs = @("-t", $primaryImageTag)
 $repoParts = $ImageName -split '/'
 $shortName = $repoParts[$repoParts.Length - 1]
 
-foreach ($extraTag in $AdditionalTags) {
+$tagList = @()
+if ($AdditionalTags) {
+    if ($AdditionalTags -is [string]) {
+        $cleanString = $AdditionalTags.Replace('@(', '').Replace(')', '').Replace('"', '').Replace("'", "")
+        $tagList = $cleanString -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    } else {
+        foreach ($item in $AdditionalTags) {
+            $cleanItem = "$item".Replace('@(', '').Replace(')', '').Replace('"', '').Replace("'", "").Trim()
+            if ($cleanItem) { $tagList += $cleanItem }
+        }
+    }
+}
+
+foreach ($extraTag in $tagList) {
     if ($extraTag -and $extraTag -ne $ImageTag) {
         $extraFull = "$($ImageName):$($extraTag)"
         $extraShort = "$($shortName):$($extraTag)"

@@ -226,7 +226,7 @@ pipeline {
                     echo "[DOCKER BUILD] Packaging versioned image: ${params.DOCKER_IMAGE_NAME}:${imageTag}"
                     
                     bat """
-                        powershell -ExecutionPolicy Bypass -File scripts/build-docker.ps1 -ImageName "${params.DOCKER_IMAGE_NAME}" -ImageTag "${imageTag}" -AdditionalTags @("latest", "v0.1.0") -Dockerfile Dockerfile
+                        powershell -ExecutionPolicy Bypass -File scripts/build-docker.ps1 -ImageName "${params.DOCKER_IMAGE_NAME}" -ImageTag "${imageTag}" -AdditionalTags "latest,v0.1.0" -Dockerfile Dockerfile
                     """
                 }
             }
