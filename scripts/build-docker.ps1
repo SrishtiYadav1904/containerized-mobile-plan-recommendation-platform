@@ -55,23 +55,21 @@ $shortName = $repoParts[$repoParts.Length - 1]
 
 $tagList = @()
 if ($AdditionalTags) {
-    if ($AdditionalTags -is [string]) {
-        $cleanString = $AdditionalTags.Replace('@(', '').Replace(')', '').Replace('"', '').Replace("'", "")
-        $tagList = $cleanString -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
-    } else {
-        foreach ($item in $AdditionalTags) {
-            $cleanItem = "$item".Replace('@(', '').Replace(')', '').Replace('"', '').Replace("'", "").Trim()
-            if ($cleanItem) { $tagList += $cleanItem }
+    foreach ($entry in @($AdditionalTags)) {
+        $parts = "$entry" -split ','
+        foreach ($p in $parts) {
+            $cleanTag = $p.Replace('@(', '').Replace(')', '').Replace('"', '').Replace("'", "").Trim()
+            if ($cleanTag -and $cleanTag -ne $ImageTag -and ($tagList -notcontains $cleanTag)) {
+                $tagList += $cleanTag
+            }
         }
     }
 }
 
 foreach ($extraTag in $tagList) {
-    if ($extraTag -and $extraTag -ne $ImageTag) {
-        $extraFull = "$($ImageName):$($extraTag)"
-        $extraShort = "$($shortName):$($extraTag)"
-        $tagArgs += @("-t", $extraFull, "-t", $extraShort)
-    }
+    $extraFull = "$($ImageName):$($extraTag)"
+    $extraShort = "$($shortName):$($extraTag)"
+    $tagArgs += @("-t", $extraFull, "-t", $extraShort)
 }
 
 # 3. Build Docker Image
