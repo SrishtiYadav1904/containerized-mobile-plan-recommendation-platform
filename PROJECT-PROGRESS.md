@@ -1093,11 +1093,46 @@ flowchart TD
 
 ---
 
-### Task 15 — Documentation and Final Review
-- **Task Objective:** Consolidate comprehensive project evidence, white paper, demonstration walkthrough, and final academic review.
-- **What Was Implemented:** *Ongoing maintenance throughout all tasks; initiating comprehensive final review and white paper consolidation.*
-- **Why It Matters:** Synthesizes the end-to-end engineering journey for evaluators and establishes clear operational documentation.
-- **Completion Status:** **In progress** (Actively documented via `PROJECT-PROGRESS.md`).
+### Task 15 — Final Review, Documentation, and Project Landing Page
+- **Task Objective:** Conduct a complete final audit of all 15 project milestones (Tasks 1–14), design and implement a polished, responsive, accessible light-themed landing page (`/`) explaining the application capabilities, architecture, and 10-stage DevOps delivery workflow, verify all 40 automated tests, ensure port isolation and foreign container safety, finalize all academic documentation, and complete GitFlow synchronization.
+- **What Was Implemented:**
+  1. **Comprehensive Project Audit:** Audited all previous 14 tasks including domain models, security, controllers, Jenkins pipeline, Selenium UI tests, Docker image hardening, Ansible playbooks, and rollback scripts.
+  2. **Responsive, Accessible Light-Themed Landing Page (`src/main/resources/templates/index.html`):** Authored a modern, accessible landing page adhering to the soft pink (`#E86A92`) and lilac (`#8E7CC3`) palette with clean typography, high contrast, and no dark mode or neon gimmicks. Features 9 dedicated sections:
+     - **Section 1: Sticky Navigation Bar:** Project brand title, 6 section jump links, primary CTAs (`Browse Catalogue`, `Get Recommendation`), and dynamic user greeting/role badge.
+     - **Section 2: Hero Section:** Eye-catching headline ("Find a Mobile Plan That Fits You"), descriptive subhead, live catalog count strip (published plans, operators, starting tariff), dual CTAs, and a live plan card mockup.
+     - **Section 3: How the Platform Works:** 5-step user journey (Account Creation $\rightarrow$ Catalogue Discovery $\rightarrow$ Smart Recommendation Engine $\rightarrow$ Analyst Authoring $\rightarrow$ Administrative Governance).
+     - **Section 4: Platform Capabilities:** 6 structured cards covering Multi-Carrier Catalogue, Rule-Based Scorer, RBAC Security, Plan Lifecycle Governance, Analyst Authoring, and Executive Analytics Dashboard.
+     - **Section 5: DevOps Delivery Pipeline:** 10 verified pipeline stages (Source Control $\rightarrow$ Commit Quality Gate $\rightarrow$ CI Checkout $\rightarrow$ Unit & Integration Testing $\rightarrow$ WAR Packaging $\rightarrow$ Tomcat Server Deploy $\rightarrow$ Selenium E2E Testing $\rightarrow$ Docker Containerization $\rightarrow$ Ansible Provisioning $\rightarrow$ Reliability & Rollback) with tool badges, directional connectors, and Fail-Fast Quality Gate callouts.
+     - **Section 6: System Architecture:** Layered Application Runtime (Thymeleaf, Spring Security, Spring MVC, Domain Services, JPA/Hibernate, MySQL/H2) vs DevOps Infrastructure.
+     - **Section 7: Reliability & Operational Safety:** Matrix highlighting 100% test pass rate (40/40 tests), port isolation (8084/8085), unprivileged execution (UID 1001), container isolation (`driving-school-container` protected), Ansible idempotency, and self-healing automated rollback.
+     - **Section 8: Technology Stack Grid:** Comprehensive 4-column grid (Backend, Frontend, Testing, DevOps & Containerization).
+     - **Section 9: Academic Credentials Footer:** Clear attribution for student Srishti D Yadav (Roll No: 23102C0014), guide Dr. Snehal Andhale, and Vidyalankar Institute of Technology.
+  3. **Context-Aware Styling & Dynamic Controller:** Added responsive design tokens in `src/main/resources/static/css/styles.css`. Updated `HomeController.java` to inject `PlanService` and Spring Security `Authentication`, passing live published/total plan counts and role context. All links utilize Thymeleaf context-aware `@href="@{...}"` notation, ensuring seamless routing on both standalone Tomcat (`/mpr-platform/`) and Docker root (`/`).
+  4. **Landing Page Unit & Integration Test Suite (`HomeControllerTest.java`):** Added 5 dedicated tests asserting public access, anonymous vs authenticated role badges (`CUSTOMER`, `ANALYST`), navigation anchor presence, and all 10 DevOps stages rendered in the response HTML.
+  5. **Verification of Complete Test Suite:** Executed all 35 unit/integration tests (`mvn test -Dtest="!MobilePlanSeleniumTests"`) and all 5 Selenium E2E user journeys (`MobilePlanSeleniumTests`) against live Tomcat 8084 deployment. All 40 tests passed with 0 failures and 0 errors.
+  6. **Deployment Health Verification:** Verified live Tomcat deployment at `http://localhost:8084/mpr-platform/` (HTTP 200) and `http://localhost:8084/mpr-platform/actuator/health` (HTTP 200 `{"status":"UP"}`). Verified port isolation and protected foreign containers (`driving-school-container`).
+- **Why It Matters:** Unifies the entire project into a cohesive, production-ready deliverable. Evaluators and stakeholders can visually explore the application's capabilities, review the complete 10-stage DevOps delivery lifecycle, and verify that all software engineering, testing, and operational safeguards are enforced.
+- **Evidence / Outputs:**
+  - Landing page template: `src/main/resources/templates/index.html`
+  - Responsive CSS stylesheet: `src/main/resources/static/css/styles.css`
+  - Controller & tests: `HomeController.java`, `HomeControllerTest.java` (5 tests passing)
+  - Unit/Integration test execution: 35/35 passing (0 failures, 0 errors)
+  - Selenium E2E test execution: 5/5 passing against Tomcat 8084 (0 failures, 0 errors)
+  - Live HTTP status: `http://localhost:8084/mpr-platform/` (HTTP 200)
+  - Live Health status: `http://localhost:8084/mpr-platform/actuator/health` (HTTP 200 `UP`)
+  - Official task report: `docs/task-reports/task-15.md`
+- **Completion Status:** **Completed** (Full audit completed, landing page integrated and styled, all 40 automated tests passed, documentation finalized).
+- **Viva Preparation:**
+  - *Q1: What are the primary objectives of Task 15 and how were they accomplished?*  
+    *Answer:* Task 15 has two primary objectives: first, conducting a comprehensive project-wide audit verifying all previous 14 tasks and finalizing all academic documentation; second, designing and implementing a professional, accessible, responsive project landing page integrated directly into the Spring Boot web application. This was accomplished by implementing a 9-section landing page styled with soft pink/lilac tokens, injecting live plan counts and user session details via `HomeController`, authoring 5 new unit tests, running all 40 tests (35 unit + 5 Selenium), and confirming live deployment on Tomcat 8084.
+  - *Q2: How does the landing page handle routing differences between standalone Tomcat and Docker container root context?*  
+    *Answer:* In standalone Tomcat 10.1, the application is deployed under the context path `/mpr-platform`, whereas in the containerized Docker environment it runs as the root webapp (`/`). To ensure all hyperlinks, stylesheets, and navigation anchors function flawlessly in both environments without hardcoded URLs, the landing page exclusively uses Thymeleaf's context-aware URL syntax (`th:href="@{/path}"`). Thymeleaf automatically prepends the current servlet context path dynamically.
+  - *Q3: What are the 10 stages of the DevOps delivery pipeline represented on the landing page?*  
+    *Answer:* The 10 stages are: 1. Source Code Management (Git & GitHub), 2. Commit Quality Gate (Pre-commit hooks & branch protection), 3. Jenkins CI Pipeline Checkout, 4. Automated Unit & Integration Testing (JUnit 5 + H2), 5. WAR Artifact Packaging (Maven), 6. Server Deployment (Tomcat 10.1 on Port 8084), 7. Selenium Continuous Testing Quality Gate (Headless Chrome), 8. Docker Image Packaging & Hardening (Multi-stage build, UID 1001), 9. Continuous Deployment (Docker host port 8085), and 10. Ansible Provisioning, Health Check & Automated Rollback.
+  - *Q4: Why does our project reject dark theme and neon styling in favor of a soft pink and lilac palette?*  
+    *Answer:* The project design specification mandates a clean, professional, accessible light-theme interface with soft pink (`#E86A92`) and lilac (`#8E7CC3`) accents. Dark themes and harsh neon colors can induce visual fatigue, compromise WCAG AA contrast standards for tabular data, and create an unprofessional impression. Our palette provides high typographic contrast (WCAG AAA contrast on body text `#2D3142` over `#FAF8FC`), subtle visual hierarchy, and an aesthetically pleasing consumer experience.
+  - *Q5: How does the Fail-Fast Quality Gate operate across our pipeline?*  
+    *Answer:* The Fail-Fast Quality Gate is enforced at Stage 4 (Maven Unit Tests) and Stage 7 (Selenium E2E Tests). If any unit test or browser journey encounters an assertion error or regression, the Jenkins pipeline immediately halts with exit code 1. Stages 5, 6, 8, 9, and 10 are skipped. The pipeline archives failure screenshots and DOM dumps to assist developers with root-cause analysis, ensuring that degraded or broken artifacts are never packaged, deployed to Tomcat, or shipped to Docker containers.
 
 ---
 
@@ -1105,21 +1140,21 @@ flowchart TD
 
 | Dimension | Current Verified State | Evidence / Location |
 |---|---|---|
-| **Active Local Branch** | `feature/14-automated-rollback` (active, verified Task 14 implementation) | `git status` |
-| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins`, `feature/11-docker-containerization`, `feature/12-jenkins-docker-cd`, `feature/13-ansible-config-management` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
+| **Active Local Branch** | `feature/15-final-review-documentation` (active, verified Task 15 audit & landing page) | `git status` |
+| **Active Remote Branches** | `main`, `develop`, `feature/5-create-view-plans`, `feature/6-mvp-completion`, `feature/7-jenkins-ci-job`, `feature/8-pipeline-server-deploy`, `feature/8-fix-deployment-health-check`, `feature/9-selenium-test-automation`, `feature/10-continuous-testing-jenkins`, `feature/11-docker-containerization`, `feature/12-jenkins-docker-cd`, `feature/13-ansible-config-management`, `feature/14-automated-rollback` on GitHub | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform` |
 | **Latest Release Tag** | `v0.1.0` (Annotated release tag pointing to commit `e51885b` on `main`) | `https://github.com/SrishtiYadav1904/containerized-mobile-plan-recommendation-platform/releases/tag/v0.1.0` |
 | **Latest Commit SHA** | Verified commit on `develop` (`64c35df`) and `main` (`64c35df`) | `git log -n 1 --oneline` |
-| **Working Application Features** | Full MVP complete: User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
+| **Working Application Features** | Full MVP complete: Interactive 9-section project landing page (`/`) with 10-stage DevOps pipeline visualization, User registration & BCrypt authentication, Role-Based Access Control (`CUSTOMER`, `ANALYST`, `ADMINISTRATOR`), Plan CRUD with keyword search and price/validity filters, role-controlled status workflow (`DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED`), customer usage/budget recommendation form with 4-factor scoring engine (35% data, 25% voice, 25% price, 15% perks), executive summary dashboard (`/dashboard` and `/api/dashboard/summary`), 24 realistic seed plans across 4 operators (Jio, Airtel, Vi, BSNL), Actuator health endpoint (`/actuator/health`), in-memory H2 database, light theme UI with soft pink/lilac accents. | `src/main/` |
 | **Database Configuration** | Default: In-Memory H2 (`jdbc:h2:mem:mpr_db`). MySQL 8 configured via environment variable overrides (`DB_URL`, `DB_USER`, `DB_PASS`). Automatic initial plan and user seeding active. | `src/main/resources/application.properties` |
-| **Test Suite Results** | **35 tests run, 0 failures, 0 errors, 0 skipped.** Full suite includes 30 unit/slice tests (`PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]) PLUS 5 Selenium WebDriver end-to-end user journeys (`MobilePlanSeleniumTests` [5]) covering RBAC, search/filter, plan creation draft, recommendation calculation, and status approval lifecycle. | Maven Surefire Reports (`target/surefire-reports/`) |
+| **Test Suite Results** | **40 tests run, 0 failures, 0 errors, 0 skipped (100% pass rate).** Full suite includes 35 unit/slice tests (`HomeControllerTest` [5], `PlanServiceTest` [9], `RecommendationServiceTest` [4], `UserServiceTest` [4], `PlanControllerTest` [12], `MobilePlanRecommendationApplicationTests` [1]) PLUS 5 Selenium WebDriver end-to-end user journeys (`MobilePlanSeleniumTests` [5]) covering RBAC, search/filter, plan creation draft, recommendation calculation, and status approval lifecycle. | Maven Surefire Reports (`target/surefire-reports/`) |
 | **Automated UI Testing & Quality Gate** | **Completed & Enforced:** Continuous Testing integrated into Jenkins pipeline with separate Unit/Integration and Selenium stages. Headless Chrome 155 with Page Object Model (POM), explicit waits, automated screenshot/DOM failure diagnostics, and strict Quality Gate halting packaging/deployment on failure. | `src/test/java/com/mpr/platform/ui/` |
 | **Jenkins Status** | **Completed & Active:** Pipeline job `Mobile-Plan-Recommendation-CI` configured via SCM `Jenkinsfile` on Jenkins 2.568.1 (port 8080). Verified Build #18 SUCCESS (all 9 stages passed: Checkout, Validation, Unit Tests, Selenium E2E Tests, Package WAR, Deploy to Tomcat on port 8084, Build Docker Image, Deploy Container to port 8085, and Post Archive Actions). | `http://localhost:8080/job/Mobile-Plan-Recommendation-CI/18/` |
 | **Archived Artifacts** | `target/containerized-mobile-plan-recommendation-platform.war` (55.5 MB), `deployment-state.json` (rollback metadata), test failure screenshots, surefire test reports | Jenkins Build #18 Archives on disk |
-| **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}`. | `http://localhost:8084/mpr-platform/actuator/health` |
+| **Server Deployment Status** | **Deployed & Healthy:** Standalone Apache Tomcat 10.1 (`E:\Downloads\apache-tomcat-10.1.61`) active on port 8084. Deployed `webapps/mpr-platform.war` verified via live Actuator health endpoint `http://localhost:8084/mpr-platform/actuator/health` returning HTTP 200 with `{"status":"UP"}` and landing page at `http://localhost:8084/mpr-platform/` returning HTTP 200. | `http://localhost:8084/mpr-platform/actuator/health` |
 | **Docker Status** | **Continuous Deployment & Self-Healing Active:** Container `mpr-platform-container` (`4404d5e98604`) deployed to host port `8085` (internal `8080`). Status: `Up (healthy)`, non-root `USER 1001`. Native Docker healthcheck and Spring Actuator health returning HTTP 200 `UP`. Machine-readable rollback metadata tracked in `deployment-state.json`. Unrelated containers (`driving-school-container`) untouched. | `http://localhost:8085/actuator/health`, `docs/docker-guide.md`, `docs/task-reports/task-14.md` |
 | **Ansible & Reliability Status** | **Completed & Verified:** Modular Ansible architecture (`ansible.cfg`, `inventories/`, `group_vars/`, `roles/mpr_platform/`, `playbooks/deploy-mpr-platform.yml`, `playbooks/rollback-mpr-platform.yml`), containerized runner (`mpr-ansible-runner:latest`), PowerShell wrapper (`scripts/run-ansible.ps1`). Validated second-run idempotency (`ok=30 changed=5 skipped=5`), port 8085 safety assertion (rejects forbidden 8072, 8081, 8082), automated rollback playbook (`ok=6 changed=2`), automated rollback script (`scripts/rollback-deployment.ps1`), and safe failure simulation (`scripts/test-automated-rollback.ps1`). | `ansible/`, `scripts/`, `docs/task-reports/task-14.md` |
 | **Verified Working Ports** | Jenkins Controller: `8080`. Standalone Tomcat: `8084`. Docker Container Host Port: `8085`. Reserved ports `8072`, `8081`, `8082` strictly avoided. | Port Policy in `README.md` and `Jenkinsfile` |
-| **Known Blockers** | None. Tasks 1–14 complete, automated, tested, containerized, continuously deployed, managed with Ansible, verified for idempotency, and equipped with automated self-healing rollback. | `TASK-TRACKER.md` |
+| **Known Blockers** | None. All 15 tasks completed, automated, tested, containerized, continuously deployed, managed with Ansible, verified for idempotency, equipped with automated self-healing rollback, and published with an interactive landing page and comprehensive documentation. | `TASK-TRACKER.md` |
 
 ---
 
@@ -1272,22 +1307,29 @@ When demonstrating the project in its current state (Tasks 1–12 Completed — 
 
 ---
 
-## Section G: Next Steps
+## Section G: Project Completion Summary & Viva Readiness
 
-### Immediate Next Task: Task 15 — Final Review, White Paper, and Comprehensive Documentation
+### All 15 Tasks Completed Successfully ✅
 
-- **Goal:** Synthesize all project deliverables, architectural blueprints, automated testing quality gates, container lifecycle management, Ansible configuration management, and reliability engineering into a final academic review package and white paper.
-- **Prerequisites:**
-  - Tasks 1–14 fully implemented, tested, containerized, and documented (Satisfied ✅).
-  - All feature branches merged via Pull Requests into `develop` and synchronized with `main` (Satisfied ✅).
-  - Standalone Tomcat on port 8084 and Docker on host port 8085 operational with health probes returning `UP` (Satisfied ✅).
-  - Reserved ports 8072, 8081, 8082 strictly protected (Satisfied ✅).
-- **Actions Required:**
-  1. Create feature branch `feature/15-final-review-documentation` from `develop`.
-  2. Review and ensure consistency across all task reports (`docs/task-reports/task-01.md` through `task-14.md`).
-  3. Author official Task 15 milestone report (`docs/task-reports/task-15.md`).
-  4. Complete final audit of `TASK-TRACKER.md` (all 15 tasks marked Completed).
-  5. Finalize `PROJECT-PROGRESS.md` with complete viva preparation review and executive project summary.
-  6. Open and merge final Pull Request into `develop` and fast-forward sync `main`.
+All 15 planned agile milestones of the **Containerized Mobile Plan Recommendation Platform** are fully implemented, verified, tested, containerized, and documented:
+
+1. **Tasks 1–3:** Foundation, Agile & DevOps Workflow, Requirements Baseline (`docs/tasks-1-3-summary.md`).
+2. **Tasks 4–6:** Git/GitHub Initialization, Feature Branching, MVP Completion, Tag `v0.1.0` (`docs/task-reports/task-04.md` to `task-06.md`).
+3. **Tasks 7–8:** Jenkins CI/CD, Pipeline as Code (`Jenkinsfile`), Server Deployment to Tomcat 10.1 on Port 8084 (`docs/task-reports/task-07.md`, `task-08.md`).
+4. **Tasks 9–10:** Selenium WebDriver Automation (Headless Chrome, POM, failure diagnostics), Continuous Testing Quality Gate in Jenkins (`docs/task-reports/task-09.md`, `task-10.md`).
+5. **Tasks 11–12:** Docker Multi-Stage Image Hardening (non-root UID 1001), Jenkins-Docker Continuous Deployment on Port 8085 (`docs/task-reports/task-11.md`, `task-12.md`).
+6. **Tasks 13–14:** Ansible Configuration Management, Port Safety Assertions, Playbook Idempotency, and Automated Self-Healing Rollback (`docs/task-reports/task-13.md`, `task-14.md`).
+7. **Task 15:** Comprehensive Project Audit, Responsive Accessible Project Landing Page (`/`), 40/40 Passing Automated Tests, and Final Documentation Consolidation (`docs/task-reports/task-15.md`).
+
+### Viva Readiness Checklist
+
+- [x] All 15 tasks verified against working code, configurations, and test reports.
+- [x] 40 automated tests passing with 0 failures and 0 errors (35 unit/integration + 5 Selenium UI journeys).
+- [x] Application accessible on Standalone Tomcat 10.1 (`http://localhost:8084/mpr-platform/`) and Docker container (`http://localhost:8085/`).
+- [x] Spring Boot Actuator health check returns HTTP 200 `UP`.
+- [x] Interactive landing page (`/`) clearly visualizes the application features and 10-stage DevOps delivery pipeline.
+- [x] Port safety policy strictly observed (8084, 8085 active; 8072, 8081, 8082 untouched).
+- [x] Unrelated services (`driving-school-container`) fully safeguarded.
+- [x] GitFlow history preserved: all feature branches merged cleanly into `develop` and synchronized with `main`.
 
 

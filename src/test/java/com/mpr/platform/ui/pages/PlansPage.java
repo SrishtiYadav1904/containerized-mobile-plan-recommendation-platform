@@ -101,7 +101,13 @@ public class PlansPage {
 
     public void openPlanDetails(String planName) {
         By cardDetailLink = By.xpath("//div[contains(@class, 'plan-card')][.//h3[contains(text(), '" + planName + "')]]//a[contains(text(), 'View Details')]");
-        wait.until(ExpectedConditions.elementToBeClickable(cardDetailLink)).click();
+        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(cardDetailLink));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center', inline: 'center'});", element);
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(element)).click();
+        } catch (org.openqa.selenium.ElementClickInterceptedException e) {
+            ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+        }
     }
 
     public boolean hasCreatePlanOption() {

@@ -159,11 +159,41 @@ Pull requests require passing test suites and adherence to the [Definition of Do
 | **Task 12** | Jenkins-Docker Continuous Deployment | Automated image build, registry tag, and container deployment |
 | **Task 13** | Configuration Management Script | Ansible playbook for environment provisioning |
 | **Task 14** | Automated Provisioning & Reliability | Ansible idempotency, health-check validation, rollback execution |
+| **Task 15** | Final Review, Documentation & Landing Page | Comprehensive audit, interactive 9-section landing page, 40 tests passed |
+
+---
+
+## 🌐 Project Landing Page & Routing
+
+The platform features a responsive, light-themed landing page (`/`) styled in soft pink (`#E86A92`) and lilac (`#8E7CC3`) accents, presenting:
+- **Interactive Sticky Navigation:** Anchor jumps across all sections with dynamic user session badge.
+- **Hero Section:** Plan discovery value proposition, real-time catalog statistics, and live plan preview mockup.
+- **5-Step User Journey:** Registration $\rightarrow$ Plan Discovery $\rightarrow$ Smart Recommendations $\rightarrow$ Analyst Authoring $\rightarrow$ Administrative Governance.
+- **6 Platform Capabilities:** Multi-Carrier Catalogue, 4-Factor Rule Scorer, RBAC Security, Plan Lifecycle Governance, Analyst Authoring Suite, Executive Analytics.
+- **10-Stage DevOps Pipeline:** Visual pipeline flow from Developer Push to Self-Healing Rollback with Fail-Fast Quality Gate indicators.
+- **System Architecture:** Layered Application Runtime (Spring Boot, Thymeleaf, Spring Security, JPA) vs DevOps Delivery Infrastructure.
+- **Reliability & Safety Matrix:** 100% test pass rate (40/40 tests), port isolation (8084/8085), non-root execution (UID 1001), Ansible idempotency, and automated rollback.
+- **Comprehensive Tech Stack Grid:** Backend, Frontend, Testing, and DevOps tools.
+- **Academic Credentials Footer:** Student Srishti D Yadav (23102C0014), Guide Dr. Snehal Andhale, Vidyalankar Institute of Technology.
+
+### Primary Application Routes
+
+| Path | Access Level | Description |
+|---|---|---|
+| `/` | Public (All) | Interactive Project Landing Page |
+| `/plans` | Public / Customer / All | Mobile Plan Catalogue with search and filters |
+| `/plans/{id}` | Public / All | Detailed plan specifications and benefits |
+| `/recommendations` | Customer / All | 4-Factor Smart Recommendation Engine form & results |
+| `/plans/new` | `ANALYST`, `ADMINISTRATOR` | New plan draft authoring form |
+| `/dashboard` | `ANALYST`, `ADMINISTRATOR` | Executive metrics & status distribution dashboard |
+| `/login` | Public | Role-based authentication form |
+| `/actuator/health` | Public / Monitoring | Spring Boot Actuator health probe (`UP`) |
 
 ---
 
 ## 📄 Documentation & Reports
 
-- Task progress reports: Located in `docs/task-reports/` (e.g., [`docs/task-reports/task-04.md`](docs/task-reports/task-04.md))
+- Task progress reports: Located in `docs/task-reports/` (e.g., [`docs/task-reports/task-15.md`](docs/task-reports/task-15.md))
+- Complete Project Progress & Viva Guide: [`PROJECT-PROGRESS.md`](PROJECT-PROGRESS.md)
 - Architecture and Tasks 1–3 Baseline: [`docs/tasks-1-3-summary.md`](docs/tasks-1-3-summary.md)
 - Task Tracker: [`TASK-TRACKER.md`](TASK-TRACKER.md)

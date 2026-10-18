@@ -16,7 +16,7 @@
 | 12 | Jenkins-Docker Continuous Deployment | Completed | `docs/task-reports/task-12.md` (Build #18 SUCCESS, automated Docker image build, container continuous deployment to host port 8085, rollback metadata archived) |
 | 13 | Configuration Management Script | Completed | `docs/task-reports/task-13.md` (Ansible playbook & inventory, container runner, port 8085 safety assertion, idempotent deployment, verified UP) |
 | 14 | Automated Provisioning and Reliability Validation | Completed | `docs/task-reports/task-14.md` (Ansible idempotency verified, automated rollback script & playbook, simulated failure & self-healing test passed) |
-| 15 | Final Documentation and Review | In progress | Final milestone consolidation and comprehensive viva preparation |
+| 15 | Final Documentation and Review | Completed | `docs/task-reports/task-15.md` (Final audit complete, responsive landing page integrated, 40/40 tests passed, Tomcat 8084 UP) |
 
 **Port plan:** Tomcat app `8084`; Docker host port `8085` → container port `8080`. Do not use `8072`, `8081`, or `8082`.
 
